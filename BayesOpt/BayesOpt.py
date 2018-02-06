@@ -30,6 +30,32 @@ import os
 class BayesOpt(object):
     """
     Generic Bayesian optimization algorithm
+
+    A python implementation of a Generic Bayesian optimization algorithm
+    that can be used as automatic neural network network configurator using multiple GPU's
+    In general it can be used to optimize any (expeonsive) black box problem.
+
+    Args:
+        search_space (:obj:`SearchSpace`): The boundaries and dimensions that define the search space.
+        obj_func (:obj:`callable`): The objective function, should *print* the fitness value in the end.
+        surrogate (:obj:`model`): A sklearn model that is used as surrogate, for example RandomForest, or GaussianProcess
+              Any model works as long as it has a train and fit function.
+        minimize (boolean, optional): If the objective function is a minimization problem or not, defaults to True.
+        noisy (boolean, optional): If the objective function is noizy or not, defaults to False.
+        eval_budget (int, optional): The number of objective function evaluations to spend, defaults to None, meaning unlimited.
+        max_iter (int, optional): The number of optimization iterations to perform. Default is None, unlimited.
+        n_init_sample (int, optional): The number of points for the initial design of experiments. Default is 20 times the number of dimensions.
+        n_point (int, optional): Number of candidates to evaluate in paralel. Default is 1.
+        n_jobs (int, optional): Number of processes to use for the evaluation. Default is 1.
+        n_restart (int, optional): Number of restarts for the optimization over the surrogate model. Default is 10 times the number of dimensions.
+        optimizer (str, optional): Internal optimizer, can be 'MIES' or 'BFGS', default is 'MIES'.
+        wait_iter (str, optional): Maximal restarts when optimal value does not change, default is 3.
+        verbose (boolean, optional): If status info is printed to the console, default is False.
+        random_seed (int, optional): Seed of the random generator, default is None for not setting a seed.
+        debug (boolean, optional): If additional debug info is printed to the console, default is False.
+        resume_file (str, optional): File location for intermediate saves, stores the surrogate in this file and can resume an experiment when the process is killed.
+            Defaults to empty string for not using an intermediate file. 
+        
     """
     def __init__(self, search_space, obj_func, surrogate, 
                  minimize=True, noisy=False, eval_budget=None, max_iter=None, 
