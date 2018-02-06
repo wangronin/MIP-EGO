@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: ParallelBayesOpt
-Version: 0.9.1
+Version: 0.9.2
 Summary: Bayesian Optimization Library with GPU support
 Home-page: https://github.com/wangronin/BayesianOptimization
 Author: Hao Wang and Bas van Stein
