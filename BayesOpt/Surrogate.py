@@ -59,7 +59,8 @@ class RandomForest(RandomForestRegressor):
             # in the future, maybe implement binary/multi-value split
 
     def _check_X(self, X):
-        X_ = array(X, dtype=object)
+        # X_ = array(X, dtype=object)
+        X_ = atleast_2d(X)
         if hasattr(self, '_levels'):
             X_cat = array([self._le[i].transform(X_[:, k]) for i, k in enumerate(self._cat_idx)]).T
             X_cat = self._enc.transform(X_cat)
