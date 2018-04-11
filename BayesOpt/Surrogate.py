@@ -13,10 +13,6 @@ import pandas as pd
 import numpy as np
 from numpy import std, array, atleast_2d
 
-# import rpy2.robjects as ro
-# from rpy2.robjects.packages import importr
-# from rpy2.robjects import r, pandas2ri, numpy2ri
-
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.utils.validation import check_is_fitted
 from sklearn.ensemble.base import _partition_estimators
@@ -25,24 +21,20 @@ from sklearn.metrics import r2_score
 
 from joblib import Parallel, delayed
 
-# numpy and pandas data type conversion to R
-# numpy2ri.activate()
-# pandas2ri.activate()
-
 # this function has to be globally visible
 def save(predict, X, index, out):
     out[:, index] = predict(X, check_input=False)
 
 class RandomForest(RandomForestRegressor):
     """
-    Extension for the sklearn RandomForestRegressor class
+    Extension on the sklearn RandomForestRegressor class
     Added functionality: empirical MSE of predictions
     """
     def __init__(self, levels=None, **kwargs):
         """
         parameter
         ---------
-        levels : dict
+        levels : dict, for categorical inputs
             keys: indices of categorical variables
             values: list of levels of categorical variables
         """
@@ -103,6 +95,15 @@ class RandomForest(RandomForestRegressor):
             sigma2 = np.std(y_hat_all, axis=1, ddof=1) ** 2.
             sigma2 = sigma2.flatten()
         return (y_hat, sigma2) if eval_MSE else y_hat
+
+
+# import rpy2.robjects as ro
+# from rpy2.robjects.packages import importr
+# from rpy2.robjects import r, pandas2ri, numpy2ri
+
+# numpy and pandas data type conversion to R
+# numpy2ri.activate()
+# pandas2ri.activate()
 
 # class RrandomForest(object):
 #     """
@@ -199,6 +200,7 @@ class RandomForest(RandomForestRegressor):
 #             return numpy2ri.ri2py(_)
 
 if __name__ == '__main__':
+    # TODO: this part goes into test 
     # simple test for mixed variables...
     np.random.seed(12)
 

@@ -3,86 +3,86 @@
 Created on Mon Mar 6 15:05:01 2017
 
 @author: wangronin
-"""
+@email: wangronin@gmail.com
 
+"""
 from __future__ import division
 from __future__ import print_function
 
 import pdb
-import warnings, dill, functools, itertools
-from joblib import Parallel, delayed
-import copyreg as copy_reg
+import dill, functools, itertools, copyreg, logging
 
 import pandas as pd
 import numpy as np
 
+from joblib import Parallel, delayed
 from scipy.optimize import fmin_l_bfgs_b
 from sklearn.metrics import r2_score
-import pickle
 
-from .InfillCriteria import EI, MGFI
+from .InfillCriteria import EI, PI, MGFI
 from .optimizer import mies
 from .utils import proportional_selection
-import os
+
 # TODO: remove the usage of pandas here change it to customized np.ndarray
-# TODO: adding logging system
+# TODO: finalize the logging system
 
 class BayesOpt(object):
     """
     Generic Bayesian optimization algorithm
-
-    A python implementation of a Generic Bayesian optimization algorithm
-    that can be used as automatic neural network network configurator using multiple GPU's
-    In general it can be used to optimize any (expeonsive) black box problem.
-
-    Args:
-        search_space (:obj:`SearchSpace`): The boundaries and dimensions that define the search space.
-        obj_func (:obj:`callable`): The objective function, should *print* the fitness value in the end.
-        surrogate (:obj:`model`): A sklearn model that is used as surrogate, for example RandomForest, or GaussianProcess
-              Any model works as long as it has a train and fit function.
-        minimize (boolean, optional): If the objective function is a minimization problem or not, defaults to True.
-        noisy (boolean, optional): If the objective function is noizy or not, defaults to False.
-        eval_budget (int, optional): The number of objective function evaluations to spend, defaults to None, meaning unlimited.
-        max_iter (int, optional): The number of optimization iterations to perform. Default is None, unlimited.
-        n_init_sample (int, optional): The number of points for the initial design of experiments. Default is 20 times the number of dimensions.
-        n_point (int, optional): Number of candidates to evaluate in paralel. Default is 1.
-        n_jobs (int, optional): Number of processes to use for the evaluation. Default is 1.
-        n_restart (int, optional): Number of restarts for the optimization over the surrogate model. Default is 10 times the number of dimensions.
-        optimizer (str, optional): Internal optimizer, can be 'MIES' or 'BFGS', default is 'MIES'.
-        wait_iter (str, optional): Maximal restarts when optimal value does not change, default is 3.
-        verbose (boolean, optional): If status info is printed to the console, default is False.
-        random_seed (int, optional): Seed of the random generator, default is None for not setting a seed.
-        debug (boolean, optional): If additional debug info is printed to the console, default is False.
-        resume_file (str, optional): File location for intermediate saves, stores the surrogate in this file and can resume an experiment when the process is killed.
-            Defaults to empty string for not using an intermediate file. 
-        
     """
-    def __init__(self, search_space, obj_func, surrogate, 
-                 minimize=True, noisy=False, eval_budget=None, max_iter=None, 
-                 n_init_sample=None, n_point=1, n_jobs=1,
-                 n_restart=None, optimizer='MIES', wait_iter=3,
-                 verbose=False, random_seed=None,  debug=False, resume_file = ""):
-
-        self.debug = debug
+    def __init__(self, search_space, obj_func, surrogate, ftarget=None,
+                 minimize=True, noisy=False, max_eval=None, max_iter=None, infill='EI',
+                 n_init_sample=None, n_point=1, n_job=1, backend='multiprocessing',
+                 n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
+                 log_file=None, data_file=None, verbose=False, random_seed=None):
+        """
+        parameter
+        ---------
+            search_space : instance of SearchSpace type
+            obj_func : callable,
+                the objective function to optimize
+            surrogate: surrogate model, currently support either GPR or random forest
+            minimize : bool,
+                minimize or maximize
+            noisy : bool,
+                is the objective stochastic or not?
+            max_eval : int,
+                maximal number of evaluations on the objective function
+            max_iter : int,
+                maximal iteration
+            n_init_sample : int,
+                the size of inital Design of Experiment (DoE),
+                default: 20 * dim
+            n_point : int,
+                the number of candidate solutions proposed using infill-criteria,
+                default : 1
+            n_job : int,
+                the number of jobs scheduled for parallelizing the evaluation. 
+                Only Effective when n_point > 1 
+            backend : str, 
+                the parallelization backend, supporting: 'multiprocessing', 'MPI', 'SPARC'
+            optimizer: str,
+                the optimization algorithm for infill-criteria,
+                supported options: 'MIES' (Mixed-Integer Evolution Strategy for random forest), 
+                                   'BFGS' (quasi-Newtion for GPR)
+        """
         self.verbose = verbose
+        self.log_file = log_file
+        self.data_file = data_file
         self._space = search_space
         self.var_names = self._space.var_name.tolist()
         self.obj_func = obj_func
         self.noisy = noisy
         self.surrogate = surrogate
-
-        self.resume_file = resume_file        
-        if (os.path.isfile(resume_file)):
-            self.data = self._load_object(resume_file) #resume from previous model
-            print("Resuming from previously saved surrogate")
-            self.fit_and_assess()
-
         self.n_point = n_point
-        self.n_jobs = min(self.n_point, n_jobs)
+        self.n_jobs = min(self.n_point, n_job)
+        self._parallel_backend = backend
+        self.ftarget = ftarget 
+        self.infill = infill
 
         self.minimize = minimize
         self.dim = len(self._space)
-
+        
         # column names for each variable type
         self.con_ = self._space.var_name[self._space.id_C].tolist()   # continuous
         self.cat_ = self._space.var_name[self._space.id_N].tolist()   # categorical
@@ -95,7 +95,7 @@ class BayesOpt(object):
        
         # parameter: objective evaluation
         self.init_n_eval = 1      # TODO: for noisy objective function, maybe increase the initial evaluations
-        self.max_eval = int(eval_budget) if eval_budget else np.inf
+        self.max_eval = int(max_eval) if max_eval else np.inf
         self.max_iter = int(max_iter) if max_iter else np.inf
         self.n_init_sample = self.dim * 20 if n_init_sample is None else int(n_init_sample)
         self.eval_hist = []
@@ -109,7 +109,8 @@ class BayesOpt(object):
         # self._levels = list(self._space.levels.values())
         self._levels = np.array([self._space.bounds[i] for i in self._space.id_N]) # levels for discrete variable
         self._optimizer = optimizer
-        self._max_eval = int(5e2 * self.dim) 
+        # TODO: set this number smaller when using L-BFGS and larger for MIES
+        self._max_eval = int(5e2 * self.dim) if max_infill_eval is None else max_infill_eval
         self._random_start = int(10 * self.dim) if n_restart is None else n_restart
         self._wait_iter = int(wait_iter)    # maximal restarts when optimal value does not change
 
@@ -126,18 +127,33 @@ class BayesOpt(object):
         self.random_seed = random_seed
         if self.random_seed:
             np.random.seed(self.random_seed)
-            
-        copy_reg.pickle(self._eval, dill.pickles) # for pickling 
+        
+        self._get_logger(self.log_file)
+        
+        # allows for pickling the objective function 
+        copyreg.pickle(self._eval, dill.pickles) 
+    
+    def _get_logger(self, logfile):
+        """
+        When logfile is None, no records are written
+        """
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('- %(asctime)s [%(levelname)s] -- '
+                                      '[%(process)d - %(name)s] %(message)s')
 
+        # create console handler and set level to warning
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.WARNING)
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
 
-    def _save_object(self, obj, filename):
-        with open(filename, 'wb') as output:  # Overwrites any existing file.
-            pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
-
-    def _load_object(self, filename):
-        with open(filename, 'rb') as inputfile:  
-            obj = pickle.load(inputfile)
-            return obj
+        # create file handler and set level to debug
+        if logfile is not None:
+            fh = logging.FileHandler(logfile)
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(formatter)
+            self.logger.addHandler(fh)
 
     def _get_var(self, data):
         """
@@ -162,6 +178,9 @@ class BayesOpt(object):
         return df
 
     def _compare(self, perf1, perf2):
+        """
+        Test if perf1 is better than perf2
+        """
         if self.minimize:
             return perf1 < perf2
         else:
@@ -183,14 +202,13 @@ class BayesOpt(object):
                 idx.append(i)
         return confs.loc[idx]
 
-    def _eval(self, x, gpu_no=0, runs=1):
-        
+    def _eval(self, x, runs=1):
         perf_, n_eval = x.perf, x.n_eval
         # TODO: handle the input type in a better way
-        #try:    # for dictionary input
-        __ = [self.obj_func(x[self.var_names].to_dict(), gpu_no=gpu_no) for i in range(runs)]
-        #except: # for list input
-        #    __ = [self.obj_func(self._get_var(x)) for i in range(runs)]
+        # try:    # for dictionary input
+            # __ = [self.obj_func(x[self.var_names].to_dict()) for i in range(runs)]
+        # except: # for list input
+        __ = [self.obj_func(self._get_var(x)) for i in range(runs)]
         perf = np.sum(__)
 
         x.perf = perf / runs if not perf_ else np.mean((perf_ * n_eval + perf))
@@ -210,25 +228,28 @@ class BayesOpt(object):
         
         elif isinstance(data, pd.DataFrame): 
             if self.n_jobs > 1:
-                gpu_no = range(self.n_jobs)
-
-                res = Parallel(n_jobs=self.n_jobs, verbose=False)(
-                    delayed(self._eval, check_pickle=False)(row, gpu_no[k % len(gpu_no)]) \
-                    for k, row in data.iterrows())
-                
-                x, runs, hist, hist_id = list(zip(*res))
-                self.eval_count += sum(runs)
-                self.eval_hist += list(itertools.chain(*hist))
-                self.eval_hist_id += list(itertools.chain(*hist_id))
-                for i, k in enumerate(data.index):
-                    data.loc[k] = x[i]
-                
+                if self._parallel_backend == 'multiprocessing': # parallel execution using joblib
+                    res = Parallel(n_jobs=self.n_jobs, verbose=False)(
+                        delayed(self._eval, check_pickle=False)(row) for k, row in data.iterrows())
+                    
+                    x, runs, hist, hist_id = zip(*res)
+                    self.eval_count += sum(runs)
+                    self.eval_hist += list(itertools.chain(*hist))
+                    self.eval_hist_id += list(itertools.chain(*hist_id))
+                    for i, k in enumerate(data.index):
+                        data.loc[k] = x[i]
+                elif self._parallel_backend == 'MPI': # parallel execution using MPI
+                    # TODO: to use InstanceRunner here
+                    pass
+                elif self._parallel_backend == 'Spark': # parallel execution using Spark
+                    pass        
             else:
                 for k, row in data.iterrows():
                     self._eval(row)
                     data.loc[k, ['n_eval', 'perf']] = row[['n_eval', 'perf']]
 
     def fit_and_assess(self):
+        # TODO: change var name 'perf'
         X, perf = self._get_var(self.data), self.data['perf'].values
 
         # normalization the response for numerical stability
@@ -245,8 +266,8 @@ class BayesOpt(object):
         self.r2 = r2_score(perf_, perf_hat)
 
         # TODO: in case r2 is really poor, re-fit the model or transform the input? 
-        if self.verbose:
-            print('Surrogate model r2: {}'.format(self.r2))
+        # consider the performance metric transformation in SMAC
+        self.logger.info('Surrogate model r2: {}'.format(self.r2))
         return self.r2
 
     def select_candidate(self):
@@ -263,10 +284,11 @@ class BayesOpt(object):
                     # Duplication are commonly encountered in the 'corner'
                     self.fit_and_assess()
                 else:
-                    warnings.warn('iteration {}: duplicated solution found \
-                                by optimization! New points is taken from random \
-                                design'.format(self.iter_count))
-                    confs_ = self.sampling(N=1)
+                    self.logger.warn("iteration {}: duplicated solution found" 
+                                     "by optimization! New points is taken from random"
+                                     "design".format(self.iter_count))
+                    confs_ = self._space.sampling(N=1, method='uniform')
+                    confs_ = self._to_dataframe(confs_, self.data.shape[0])
                     break
             else:
                 break
@@ -282,16 +304,13 @@ class BayesOpt(object):
         self.evaluate(confs_, runs=self.init_n_eval)
         self.data = self.data.append(confs_)
         self.data.perf = pd.to_numeric(self.data.perf)
-        #save self.data if resume_file is set
-        if (self.resume_file != ""):
-            self._save_object(self.data, self.resume_file)
-        #
         return candidates_id
 
     def intensify(self, candidates_ids):
         """
         intensification procedure for noisy observations (from SMAC)
         """
+        # TODO: verify the implementation here
         maxR = 20 # maximal number of the evaluations on the incumbent
         for i, ID in enumerate(candidates_ids):
             r, extra_run = 1, 1
@@ -326,11 +345,9 @@ class BayesOpt(object):
     def _initialize(self):
         """Generate the initial data set (DOE) and construct the surrogate model
         """
-        if self.verbose:
-            print('selected surrogate model:', self.surrogate.__class__) 
-            print('building the initial design of experiemnts...')
+        self.logger.info('selected surrogate model: {}'.format(self.surrogate.__class__)) 
+        self.logger.info('building the initial design of experiemnts...')
 
-        # self.data = self.sampling(self.n_init_sample)
         samples = self._space.sampling(self.n_init_sample)
         self.data = self._to_dataframe(samples)
         self.evaluate(self.data, runs=self.init_n_eval)
@@ -341,6 +358,9 @@ class BayesOpt(object):
 
         self.incumbent_id = np.nonzero(perf == np.min(perf))[0][0]
         self.fit_and_assess()
+
+        # record the incumbent in iteration 0
+        self.data.loc[[self.incumbent_id]].to_csv(self.data_file, header=True, index=False, mode='w')
 
     def step(self):
         if not hasattr(self, 'data'):
@@ -358,20 +378,15 @@ class BayesOpt(object):
         self.iter_count += 1
         self.hist_perf.append(self.data.loc[self.incumbent_id, 'perf'])
         
-        # only for debug purpose
-        if self.debug:
-            tmp = np.array([_ for _ in self.data.iloc[-1, 0:2].values])
-            np.set_printoptions(precision=30)
-            print(self.iter_count, tmp, np.random.get_state()[2])
-            
-        if self.verbose:
-            print()
-            print('iteration {}, current incumbent is:'.format(self.iter_count))
-            print(self.data.loc[[self.incumbent_id]])
-            print()
+        self.incumbent = self.data.loc[[self.incumbent_id]]
+
+        self.logger.info('iteration {}, current incumbent is:'.format(self.iter_count))
+        self.logger.info(str(self.incumbent))
         
-        incumbent = self.data.loc[[self.incumbent_id]]
-        return self._get_var(incumbent)[0], incumbent.perf.values
+        # save the iterative data configuration to csv
+        self.incumbent.to_csv(self.data_file, header=False, index=False, mode='a')
+        
+        return self._get_var(self.incumbent)[0], self.incumbent.perf.values
 
     def run(self):
         while not self.check_stop():
@@ -379,16 +394,20 @@ class BayesOpt(object):
 
         self.stop_dict['n_eval'] = self.eval_count
         self.stop_dict['n_iter'] = self.iter_count
-        incumbent = self.data.loc[[self.incumbent_id]]
-        return incumbent, self.stop_dict
+        return self.incumbent, self.stop_dict
 
     def check_stop(self):
         # TODO: add more stop criteria
+        # unify the design purpose of stop_dict
         if self.iter_count >= self.max_iter:
             self.stop_dict['max_iter'] = True
 
         if self.eval_count >= self.max_eval:
             self.stop_dict['max_eval'] = True
+        
+        if self.ftarget is not None and hasattr(self, 'incumbent') and \
+            self._compare(self.incumbent.perf, self.ftarget):
+            self.stop_dict['ftarget'] = True
 
         return len(self.stop_dict)
 
@@ -404,10 +423,17 @@ class BayesOpt(object):
             # exploration and exploitation
             # TODO: perhaps also introduce cooling schedule for MGF
             # TODO: other method: niching, UCB, q-EI
-            t = np.exp(0.5 * np.random.randn())
-            acquisition_func = MGFI(self.surrogate, plugin, minimize=self.minimize, t=t)
-        elif self.n_point == 1:
-            acquisition_func = EI(self.surrogate, plugin, minimize=self.minimize)
+            tt = np.exp(0.5 * np.random.randn())
+            acquisition_func = MGFI(self.surrogate, plugin, minimize=self.minimize, t=tt)
+        elif self.n_point == 1: # sequential mode
+            
+            if self.infill == 'EI':
+                acquisition_func = EI(self.surrogate, plugin, minimize=self.minimize)
+            elif self.infill == 'PI':
+                acquisition_func = PI(self.surrogate, plugin, minimize=self.minimize)
+            elif self.infill == 'MGFI':
+                acquisition_func = MGFI(self.surrogate, plugin, minimize=self.minimize, t=self.t)
+                
         return functools.partial(acquisition_func, dx=dx)
         
     def arg_max_acquisition(self, plugin=None):
@@ -415,7 +441,7 @@ class BayesOpt(object):
         Global Optimization on the acqusition function 
         """
         if self.verbose:
-            print('acquisition function optimziation...')
+            self.logger.info('acquisition function optimziation...')
         
         dx = True if self._optimizer == 'BFGS' else False
         obj_func = [self._acquisition(plugin, dx=dx) for i in range(self.n_point)]
@@ -437,14 +463,14 @@ class BayesOpt(object):
         wait_count = 0
 
         for iteration in range(self._random_start):
-            x0 = self._space.sampling(1)[0]
+            x0 = self._space.sampling(N=1, method='uniform')[0]
             
             # TODO: add IPOP-CMA-ES here for testing
             # TODO: when the surrogate is GP, implement a GA-BFGS hybrid algorithm
             if self._optimizer == 'BFGS':
                 if self.N_d + self.N_i != 0:
                     raise ValueError('BFGS is not supported with mixed variable types.')
-                # TODO: somehow this local lambda function can be pickled...
+                # TODO: find out why: somehow this local lambda function can be pickled...
                 # for minimization
                 func = lambda x: tuple(map(lambda x: -1. * x, obj_func(x)))
                 xopt_, fopt_, stop_dict = fmin_l_bfgs_b(func, x0, pgtol=1e-8,
@@ -454,8 +480,8 @@ class BayesOpt(object):
                 fopt_ = -np.sum(fopt_)
                 
                 if stop_dict["warnflag"] != 0 and self.verbose:
-                    warnings.warn("L-BFGS-B terminated abnormally with the "
-                                  " state: %s" % stop_dict)
+                    self.logger.warn("L-BFGS-B terminated abnormally with the "
+                                     " state: %s" % stop_dict)
                                 
             elif self._optimizer == 'MIES':
                 opt = mies(x0, obj_func, self._bounds.T, self._levels, self.param_type, 
@@ -466,7 +492,7 @@ class BayesOpt(object):
                 best = fopt_
                 wait_count = 0
                 if self.verbose:
-                    print('[DEBUG] restart : {} - funcalls : {} - Fopt : {}'.format(iteration + 1, 
+                    self.logger.info('restart : {} - funcalls : {} - Fopt : {}'.format(iteration + 1, 
                         stop_dict['funcalls'], fopt_))
             else:
                 wait_count += 1
