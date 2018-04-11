@@ -103,9 +103,9 @@ class mies(object):
 
         # column names of the dataframe: used for slicing
         self._id_var = np.arange(self.dim)
-        self._id_sigma = np.arange(self.N_r) + self._id_var[-1] + 1 if self.N_r else []
-        self._id_eta = np.arange(self.N_i) + self._id_sigma[-1] + 1 if self.N_i else []
-        self._id_p = np.arange(N_p) + self._id_eta[-1] + 1 if N_p else []
+        self._id_sigma = np.arange(self.N_r) + len(self._id_var) if self.N_r else []
+        self._id_eta = np.arange(self.N_i) + len(self._id_var) + len(self._id_sigma) if self.N_i else []
+        self._id_p = np.arange(N_p) + len(self._id_var) + len(self._id_sigma) + len(self._id_eta) if N_p else []
         self._id_hyperpar = np.arange(self.dim, len(individual0))
         # self.par_id = list(range(self.dim))
         
@@ -291,12 +291,14 @@ class mies(object):
             
             # TODO: the constraint handling method here will (by chance) turn really bad cadidates
             # (the one with huge sigmas) to good ones and hence making the step size explode
+            # TODO: implement the idea I had: repair the sigma of the infeasible solution 
             self.keep_in_bound(self.pop_lambda)
             self.f_lambda = self.evaluate(self.pop_lambda)
             self.select()
 
             curr_best = self.pop_mu[0]
             xopt_, fopt_ = curr_best[self._id_var], self.f_mu[0]
+            xopt_[self.id_i] = list(map(int, xopt_[self.id_i]))
             
             self.iter_count += 1
 
