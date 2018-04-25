@@ -15,6 +15,11 @@ import dill, functools, itertools, copyreg, logging
 import pandas as pd
 import numpy as np
 
+import queue
+import threading
+import time
+
+
 from joblib import Parallel, delayed
 from scipy.optimize import fmin_l_bfgs_b
 from sklearn.metrics import r2_score
@@ -59,7 +64,8 @@ class BayesOpt(object):
                  infill='EI', t0=2, tf=1e-1, schedule=None,
                  n_init_sample=None, n_point=1, n_job=1, backend='multiprocessing',
                  n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
-                 log_file=None, data_file=None, verbose=False, random_seed=None):
+                 log_file=None, data_file=None, verbose=False, random_seed=None,
+                 available_gpus=[]):
         """
         parameter
         ---------
@@ -90,6 +96,9 @@ class BayesOpt(object):
                 the optimization algorithm for infill-criteria,
                 supported options: 'MIES' (Mixed-Integer Evolution Strategy), 
                                    'BFGS' (quasi-Newtion for GPR)
+            available_gpus: array:
+                one dimensional array of GPU numbers to use for running on GPUs in parallel. Defaults to no gpus.
+
         """
         self.verbose = verbose
         self.log_file = log_file
@@ -101,6 +110,7 @@ class BayesOpt(object):
         self.surrogate = surrogate
         self.n_point = n_point
         self.n_jobs = min(self.n_point, n_job)
+        self.available_gpus = available_gpus
         self._parallel_backend = backend
         self.ftarget = ftarget 
         self.infill = infill
@@ -176,6 +186,10 @@ class BayesOpt(object):
         
         # allows for pickling the objective function 
         copyreg.pickle(self._eval_one, dill.pickles) 
+
+        # paralellize gpus
+        self.init_gpus = True
+        self.evaluation_queue = queue.Queue()
     
     def _get_logger(self, logfile):
         """
@@ -224,6 +238,29 @@ class BayesOpt(object):
                 ans.append(x)
         return ans
 
+
+    def _eval_gpu(self, x, gpu=0, runs=1):
+        """
+        evaluate one solution
+        """
+        # TODO: sometimes the obj_func take a dictionary as input...
+        fitness_, n_eval = x.fitness, x.n_eval
+        # try:
+            # ans = [self.obj_func(x.tolist()) for i in range(runs)]
+        # except:
+        ans = [self.obj_func(x.to_dict(), gpu_no=gpu) for i in range(runs)]
+
+        fitness = np.sum(ans)
+
+        x.n_eval += runs
+        x.fitness = fitness / runs if fitness_ is None else (fitness_ * n_eval + fitness) / x.n_eval
+
+        self.eval_count += runs
+        self.eval_hist += ans
+        self.eval_hist_id += [x.index] * runs
+        
+        return x, runs, ans, [x.index] * runs
+
     def _eval_one(self, x, runs=1):
         """
         evaluate one solution
@@ -234,6 +271,7 @@ class BayesOpt(object):
             # ans = [self.obj_func(x.tolist()) for i in range(runs)]
         # except:
         ans = [self.obj_func(x.to_dict()) for i in range(runs)]
+
         fitness = np.sum(ans)
 
         x.n_eval += runs
@@ -273,21 +311,27 @@ class BayesOpt(object):
                     self._eval_one(x)
 
     def fit_and_assess(self):
-        X = np.atleast_2d([s.tolist() for s in self.data])
-        fitness = np.array([s.fitness for s in self.data])
+        while True:
+            try:
+                X = np.atleast_2d([s.tolist() for s in self.data])
+                fitness = np.array([s.fitness for s in self.data])
 
-        # normalization the response for numerical stability
-        # e.g., for MGF-based acquisition function
-        _min, _max = np.min(fitness), np.max(fitness)
-        fitness_scaled = (fitness - _min) / (_max - _min)
+                # normalization the response for numerical stability
+                # e.g., for MGF-based acquisition function
+                _min, _max = np.min(fitness), np.max(fitness)
+                fitness_scaled = (fitness - _min) / (_max - _min)
 
-        # fit the surrogate model
-        self.surrogate.fit(X, fitness_scaled)
-        
-        self.is_update = True
-        fitness_hat = self.surrogate.predict(X)
-        r2 = r2_score(fitness_scaled, fitness_hat)
-
+                # fit the surrogate model
+                self.surrogate.fit(X, fitness_scaled)
+                
+                self.is_update = True
+                fitness_hat = self.surrogate.predict(X)
+                r2 = r2_score(fitness_scaled, fitness_hat)
+                break
+            except Exception as e:
+                print("Error fitting model, retrying...")
+                print(e)
+                time.sleep(15)
         # TODO: in case r2 is really poor, re-fit the model or transform the input? 
         # consider the performance metric transformation in SMAC
         self.logger.info('Surrogate model r2: {}'.format(r2))
@@ -357,6 +401,8 @@ class BayesOpt(object):
         self.data += X
         return candidates_id
 
+
+
     def intensify(self, candidates_ids):
         """
         intensification procedure for noisy observations (from SMAC)
@@ -412,6 +458,62 @@ class BayesOpt(object):
         # record the incumbent in iteration 0
         # self.data.loc[[self.incumbent_id]].to_csv(self.data_file, header=True, index=False, mode='w')
 
+
+    def gpuworker(self, q, gpu_no):
+        "GPU worker function "
+        while True:
+            self.logger.info('GPU no. {} is waiting for task'.format(gpu_no))
+
+            confs_ = q.get()
+            self._eval_gpu(confs_, gpu_no)[0] #will write the result to confs_
+
+            
+            if self.data is None:
+                self.data = [confs_]
+            else: 
+                self.data += confs_
+            perf = np.array([s.fitness for s in self.data])
+            #self.data.perf = pd.to_numeric(self.data.perf)
+            #self.eval_count += 1
+            self.incumbent_id = np.nonzero(perf == self._best(perf))[0][0]
+            self.incumbent = self.data[self.incumbent_id]
+
+            self.logger.info("{} threads still running...".format(threading.active_count()))
+
+            # model re-training
+            self.iter_count += 1
+            self.hist_f.append(self.incumbent.fitness)
+
+            self.logger.info('iteration {}, current incumbent is:'.format(self.iter_count))
+            self.logger.info(self.incumbent.to_dict())
+
+            incumbent = self.incumbent
+            #return self._get_var(incumbent)[0], incumbent.perf.values
+
+            q.task_done()
+
+            #print "GPU no. {} is waiting for task on thread {}".format(gpu_no, gpu_no)
+            if not self.check_stop():
+                if len(self.data) >= self.n_init_sample:
+                    self.fit_and_assess()
+                    while True:
+                        try:
+                            confs_ = self.select_candidate()
+                            break
+                        except Exception as e:
+                            print(e)
+                            print("Error selecting candidate, retrying in 60 seconds...")
+                            time.sleep(60)
+                else:
+                    samples = self._space.sampling(1)
+                    confs_ = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)]
+                    #confs_ = self._to_dataframe(self._space.sampling(1))
+                q.put(confs_)
+            else:
+                break
+
+        print('Finished thread {}'.format(gpu_no))
+
     def step(self):
         if not hasattr(self, 'data'):
            self._initialize()
@@ -441,12 +543,68 @@ class BayesOpt(object):
         return self.incumbent, self.incumbent.fitness
 
     def run(self):
-        while not self.check_stop():
-            self.step()
+        if (len(self.available_gpus) > 0):
 
-        self.stop_dict['n_eval'] = self.eval_count
-        self.stop_dict['n_iter'] = self.iter_count
-        return self.incumbent, self.stop_dict
+            if self.n_jobs > len(self.available_gpus):
+                print("Not enough GPUs available for n_jobs")
+                return 1
+
+            # initialize
+            self.logger.info('selected surrogate model: {}'.format(self.surrogate.__class__)) 
+            self.logger.info('building the initial design of experiemnts...')
+
+            samples = self._space.sampling(self.n_init_sample)
+            datasamples = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)]
+            self.data = None
+
+
+            for i in range(self.n_init_sample):
+                self.evaluation_queue.put(datasamples[i])
+
+            #self.evaluate(self.data, runs=self.init_n_eval)
+            ## set the initial incumbent
+            #fitness = np.array([s.fitness for s in self.data])
+            #self.incumbent_id = np.nonzero(fitness == self._best(fitness))[0][0]
+            #self.fit_and_assess()
+            # #######################
+            # new code... 
+            #self.data = pd.DataFrame()
+            #samples = self._space.sampling(self.n_init_sample)
+            #initial_data_samples = self._to_dataframe(samples)
+            # occupy queue with initial jobs
+            #for i in range(self.n_jobs):
+            #    self.evaluation_queue.put(initial_data_samples.iloc[i])
+
+            thread_dict = {}
+            # launch threads for all GPUs
+            for i in range(self.n_jobs):
+                t = threading.Thread(target=self.gpuworker, args=(self.evaluation_queue,
+                                                                  self.available_gpus[i],))
+                t.setDaemon = True
+                thread_dict[i] = t
+                t.start()
+
+            # wait for queue to be empty and all threads to finish
+            self.evaluation_queue.join()
+            threads = [thread_dict[a] for a in thread_dict]
+            for thread in threads:
+                thread.join()
+
+            print('\n\n All threads should now be done. Finishing program...\n\n')
+
+            self.stop_dict['n_eval'] = self.eval_count
+            self.stop_dict['n_iter'] = self.iter_count
+
+            return self.incumbent, self.stop_dict
+
+        else:
+
+            while not self.check_stop():
+                self.step()
+
+            self.stop_dict['n_eval'] = self.eval_count
+            self.stop_dict['n_iter'] = self.iter_count
+            return self.incumbent, self.stop_dict
 
     def check_stop(self):
         # TODO: add more stop criteria

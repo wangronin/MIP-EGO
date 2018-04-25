@@ -150,7 +150,7 @@ class NominalSpace(SearchSpace):
     def __rmul__(self, N):
         return self.__mul__(N)
     
-    def sampling(self, N=1):
+    def sampling(self, N=1, method=""):
         res = np.empty((N, self.dim), dtype=object)
         for i in range(self.dim):
             res[:, i] = self._levels[i][randint(0, self._n_levels[i], N)]

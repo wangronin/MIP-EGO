@@ -13,6 +13,7 @@ from subprocess import STDOUT, check_output
 import numpy as np
 import time
 
+import gputil as gp
 from BayesOpt import BayesOpt
 from BayesOpt.Surrogate import RandomForest
 from BayesOpt.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
@@ -34,8 +35,6 @@ class obj_func(object):
         self.program = program
         
     def __call__(self, cfg, gpu_no):
-        time.sleep(30)
-        gpu_no += 6
         print("calling program with gpu "+str(gpu_no))
         cmd = ['python3', self.program, '--cfg', str(cfg), str(gpu_no)]
         outs = ""
@@ -91,11 +90,23 @@ lr_rate = ContinuousSpace([1e-4, 1.0e-0], 'lr')        # learning rate
 l2_regularizer = ContinuousSpace([1e-5, 1e-2], 'l2')# l2_regularizer
 search_space =  stack_sizes * strides * filters *  kernel_size * activation * activation_dense * drop_out * lr_rate * l2_regularizer * step * global_pooling 
 
+
+print('starting program...')    
+available_gpus = gp.getAvailable(limit=16)
+print(available_gpus)
+
+
 # use random forest as the surrogate model 
 model = RandomForest(levels=search_space.levels)
-opt = BayesOpt(search_space, objective, model, max_iter=n_step, random_seed=666,
-               n_init_sample=10, n_point=10, n_jobs=10, minimize=True, 
-               verbose=True, debug=False, optimizer='MIES', resume_file="mnist.pkl")
+opt = BayesOpt(search_space, objective, model, ftarget=None,
+                 minimize=True, noisy=False, max_eval=None, max_iter=n_step, 
+                 infill='EI', n_init_sample=10, n_point=3, n_job=3, 
+                 n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
+                 log_file=None, data_file=None, verbose=False, random_seed=None,
+                 available_gpus=available_gpus)
+
+
 
 incumbent, stop_dict = opt.run()
 print (incumbent, stop_dict)
+
