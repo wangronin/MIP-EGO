@@ -498,18 +498,18 @@ class BayesOpt(object):
                     self.fit_and_assess()
                     while True:
                         try:
-                            confs_ = self.select_candidate()
+                            X, infill_value = self.arg_max_acquisition()
+                            confs_ = Solution(X, index=len(self.data), var_name=self.var_names)
                             break
                         except Exception as e:
                             print(e)
                             print("Error selecting candidate, retrying in 60 seconds...")
                             time.sleep(60)
-                    q.put(confs_)
-                #else:
-                #    samples = self._space.sampling(1)
-                #    confs_ = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)][0]
-                #    #confs_ = self._to_dataframe(self._space.sampling(1))
-                
+                else:
+                    samples = self._space.sampling(1)
+                    confs_ = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)][0]
+                    #confs_ = self._to_dataframe(self._space.sampling(1))
+                q.put(confs_)
             else:
                 break
 
