@@ -186,6 +186,7 @@ class BayesOpt(object):
         
         # allows for pickling the objective function 
         copyreg.pickle(self._eval_one, dill.pickles) 
+        copyreg.pickle(self.obj_func, dill.pickles) 
 
         # paralellize gpus
         self.init_gpus = True
@@ -238,7 +239,6 @@ class BayesOpt(object):
                 ans.append(x)
         return ans
 
-
     def _eval_gpu(self, x, gpu=0, runs=1):
         """
         evaluate one solution
@@ -268,7 +268,7 @@ class BayesOpt(object):
         # TODO: sometimes the obj_func take a dictionary as input...
         fitness_, n_eval = x.fitness, x.n_eval
         # try:
-            # ans = [self.obj_func(x.tolist()) for i in range(runs)]
+        # ans = [self.obj_func(x.tolist()) for i in range(runs)]
         # except:
         ans = [self.obj_func(x.to_dict()) for i in range(runs)]
 
@@ -338,35 +338,6 @@ class BayesOpt(object):
         return r2
 
     def select_candidate(self):
-        # always generate mu + 1 candidate solutions
-        # while True:
-        #     X, infill_value = self.arg_max_acquisition()
-            
-        #     if self.n_point > 1:
-        #         X = [Solution(x, name=len(self.data) + i) for i, x in enumerate(X)]
-        #     else:
-        #         X = [Solution(X, name=len(self.data))]
-        #     X = self._remove_duplicate(X)
-
-        #     # if no new design site is found, re-estimate the parameters immediately
-        #     # TODO: maybe remove this rule
-        #     if len(X) < self.n_point:
-        #         if not self.is_update:
-        #             # Duplication are commonly encountered in the 'corner'
-        #             self.fit_and_assess()
-        #         else:
-        #             self.logger.warn("iteration {}: duplicated solution found " 
-        #                              "by optimization! New points is taken from random "
-        #                              "design".format(self.iter_count))
-        #             N = self.n_point - len(X)
-        #             if N > 1:
-        #                 X = self._space.sampling(N=N, method='LHS')
-        #             else:  # To generate a single sample, only uniform sampling is allowed
-        #                 X = self._space.sampling(N=1, method='uniform')
-        #             X = [Solution(x, name=len(self.data) + i) for i, x in enumerate(X)]
-        #             break
-        #     else:
-        #         break
         self.is_update = False
         X, infill_value = self.arg_max_acquisition()
         
@@ -400,8 +371,6 @@ class BayesOpt(object):
         self.evaluate(X, runs=self.init_n_eval)
         self.data += X
         return candidates_id
-
-
 
     def intensify(self, candidates_ids):
         """
@@ -454,10 +423,6 @@ class BayesOpt(object):
 
         self.incumbent_id = np.nonzero(fitness == self._best(fitness))[0][0]
         self.fit_and_assess()
-
-        # record the incumbent in iteration 0
-        # self.data.loc[[self.incumbent_id]].to_csv(self.data_file, header=True, index=False, mode='w')
-
 
     def gpuworker(self, q, gpu_no):
         "GPU worker function "
@@ -708,8 +673,7 @@ class BayesOpt(object):
                                      " state: %s" % stop_dict)
                                 
             elif self._optimizer == 'MIES':
-                opt = mies(x0, obj_func, self._bounds.T, self._levels, self.param_type, 
-                           eval_budget, minimize=False, verbose=False)                            
+                opt = mies(self._space, obj_func, max_eval=eval_budget, minimize=False, verbose=False)
                 xopt_, fopt_, stop_dict = opt.optimize()
 
             if fopt_ > best:

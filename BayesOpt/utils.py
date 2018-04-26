@@ -51,6 +51,8 @@ def boundary_handling(x, lb, ub):
     Analysis" as alorithm 6.
     
     """
+    x = np.asarray(x, dtype='float')
+    shape_ori = x.shape
     x = np.atleast_2d(x)
     lb = np.atleast_1d(lb)
     ub = np.atleast_1d(ub)
@@ -80,7 +82,7 @@ def boundary_handling(x, lb, ub):
     
     if transpose:
         x = x.T
-    return x
+    return x.reshape(shape_ori)
 
 if __name__ == '__main__':
     # TODO: goes to unittest
