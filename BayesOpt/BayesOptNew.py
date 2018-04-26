@@ -504,11 +504,12 @@ class BayesOpt(object):
                             print(e)
                             print("Error selecting candidate, retrying in 60 seconds...")
                             time.sleep(60)
-                else:
-                    samples = self._space.sampling(1)
-                    confs_ = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)]
-                    #confs_ = self._to_dataframe(self._space.sampling(1))
-                q.put(confs_)
+                    q.put(confs_)
+                #else:
+                #    samples = self._space.sampling(1)
+                #    confs_ = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)][0]
+                #    #confs_ = self._to_dataframe(self._space.sampling(1))
+                
             else:
                 break
 
