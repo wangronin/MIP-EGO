@@ -515,6 +515,7 @@ class BayesOpt(object):
                 print("Not enough GPUs available for n_jobs")
                 return 1
 
+            self.n_point = 1 #set n_point to 1 because we only do one evaluation at a time (async)
             # initialize
             self.logger.info('selected surrogate model: {}'.format(self.surrogate.__class__)) 
             self.logger.info('building the initial design of experiemnts...')
