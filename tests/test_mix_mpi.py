@@ -13,9 +13,9 @@ from mpi4py import MPI
 import numpy as np
 
 from deap import benchmarks
-from BayesOpt import BayesOpt
-from BayesOpt.surrogate import RrandomForest, RandomForest
-from BayesOpt.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
+from mipego import mipego
+from mipego.surrogate import RrandomForest, RandomForest
+from mipego.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -65,7 +65,7 @@ def create_optimizer(dim, fitness, n_step, n_init_sample, model_type):
                               max_features=max_features,
                               min_samples_leaf=min_samples_leaf)
 
-    opt = BayesOpt(search_space, fitness, model, max_iter=n_step, random_seed=None,
+    opt = mipego(search_space, fitness, model, max_iter=n_step, random_seed=None,
                    n_init_sample=n_init_sample, minimize=True, optimizer='MIES')
     
     return opt

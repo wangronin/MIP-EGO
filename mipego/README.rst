@@ -1,4 +1,4 @@
-Bayesian Optimization Library
+Mixed Integer Parallel Efficient Global Optimization Algorithm
 =======================
 
 The bayesian optimization algorithm is a surrogate-based optimizer that can

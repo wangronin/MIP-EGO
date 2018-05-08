@@ -14,7 +14,7 @@ import numpy as np
 
 from deap import benchmarks
 from GaussianProcess_old import GaussianProcess_extra as GaussianProcess
-from BayesOpt import BayesOpt, RandomForest, RrandomForest
+from mipego import mipego, RandomForest, RrandomForest
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -51,7 +51,7 @@ def create_optimizer(dim, fitness, n_step, n_init_sample, model_type):
     elif model_type == 'R-RF':
         model = RrandomForest()
 
-    opt = BayesOpt(search_space, fitness, model, max_iter=n_step, random_seed=None,
+    opt = mipego(search_space, fitness, model, max_iter=n_step, random_seed=None,
                    n_init_sample=n_init_sample, minimize=True, optimizer='MIES')
     
     return opt

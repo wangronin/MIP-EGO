@@ -14,9 +14,9 @@ import numpy as np
 import time
 
 import gputil as gp
-from BayesOpt import BayesOpt
-from BayesOpt.Surrogate import RandomForest
-from BayesOpt.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
+from mipego import mipego
+from mipego.Surrogate import RandomForest
+from mipego.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
 import re
 import traceback
 import time
@@ -98,7 +98,7 @@ print(available_gpus)
 
 # use random forest as the surrogate model 
 model = RandomForest(levels=search_space.levels)
-opt = BayesOpt(search_space, objective, model, ftarget=None,
+opt = mipego(search_space, objective, model, ftarget=None,
                  minimize=True, noisy=False, max_eval=None, max_iter=n_step, 
                  infill='EI', n_init_sample=10, n_point=3, n_job=3, 
                  n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
