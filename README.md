@@ -2,8 +2,8 @@
 <p align="center"><img width=60% src="https://github.com/wangronin/MIP-EGO/blob/master/media/textlogo.png"></p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-![Python](https://img.shields.io/pypi/pyversions/Parallelmipego.svg)
-![Python](https://img.shields.io/pypi/status/Parallelmipego.svg)
+![Python](https://img.shields.io/pypi/pyversions/mipego.svg)
+![Python](https://img.shields.io/pypi/status/mipego.svg)
 ![Dependencies](https://img.shields.io/badge/dependencies-up%20to%20date-brightgreen.svg)
 [![GitHub Issues](https://img.shields.io/github/issues/wangronin/MIP-EGO.svg)](https://github.com/wangronin/MIP-EGO/issues)
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-orange.svg)
@@ -28,7 +28,7 @@ MiP-EGO also supports asynchronous parallel optimization, currently this feature
 
 ## Install
 ```python
-pip install mip-ego
+pip install mipego
 ```
 
 ## Usage
