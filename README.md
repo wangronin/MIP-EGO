@@ -49,21 +49,23 @@ from mipego.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
 
 # The "black-box" objective function
 def obj_func(x):
-   x_r, x_i, x_d = np.array(x[:2]), x[2], x[3]
+   x_r, x_i, x_d = np.array([x['C_0'],x['C_1']]), x['I'], x['N']
    if x_d == 'OK':
        tmp = 0
    else:
        tmp = 1
    return np.sum(x_r ** 2.) + abs(x_i - 10) / 123. + tmp * 2.
 
+
 # First we need to define the Search Space
 # the search space consists of two continues variable
 # one ordinal (integer) variable
 # and one categorical.
-C = ContinuousSpace([-5, 5]) * 2 
+C = ContinuousSpace([-5, 5],'C') * 2 
 #here we defined two variables at once using the same lower and upper bounds.
-I = OrdinalSpace([-100, 100])
-N = NominalSpace(['OK', 'A', 'B', 'C', 'D', 'E'])
+#One with label C_0, and the other with label C_1
+I = OrdinalSpace([-100, 100],'I') # one integer variable with label I
+N = NominalSpace(['OK', 'A', 'B', 'C', 'D', 'E'], 'N')
 
 #the search space is simply the product of the above variables
 search_space = C * I * N
