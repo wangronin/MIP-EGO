@@ -1,11 +1,11 @@
-<p align="center"><img width=12.5% src="https://github.com/wangronin/BayesianOptimization/blob/master/media/logo.png"></p>
-<p align="center"><img width=60% src="https://github.com/wangronin/BayesianOptimization/blob/master/media/textlogo.png"></p>
+<p align="center"><img width=12.5% src="https://github.com/wangronin/MIP-EGO/blob/master/media/logo.png"></p>
+<p align="center"><img width=60% src="https://github.com/wangronin/MIP-EGO/blob/master/media/textlogo.png"></p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-![Python](https://img.shields.io/pypi/pyversions/ParallelBayesOpt.svg)
-![Python](https://img.shields.io/pypi/status/ParallelBayesOpt.svg)
+![Python](https://img.shields.io/pypi/pyversions/Parallelmipego.svg)
+![Python](https://img.shields.io/pypi/status/Parallelmipego.svg)
 ![Dependencies](https://img.shields.io/badge/dependencies-up%20to%20date-brightgreen.svg)
-[![GitHub Issues](https://img.shields.io/github/issues/wangronin/BayesianOptimization.svg)](https://github.com/wangronin/BayesianOptimization/issues)
+[![GitHub Issues](https://img.shields.io/github/issues/wangronin/MIP-EGO.svg)](https://github.com/wangronin/MIP-EGO/issues)
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-orange.svg)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
@@ -43,9 +43,9 @@ import os
 import numpy as np
 
 #import our package, the surrogate model and the search space classes
-from BayesOpt import BayesOpt
-from BayesOpt.surrogate import RandomForest
-from BayesOpt.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
+from mipego import mipego
+from mipego.surrogate import RandomForest
+from mipego.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
 
 # The "black-box" objective function
 def obj_func(x):
@@ -70,7 +70,7 @@ search_space = C * I * N
 
 #next we define the surrogate model and the optimizer.
 model = RandomForest(levels=search_space.levels)
-opt = BayesOpt(search_space, obj_func, model, 
+opt = mipego(search_space, obj_func, model, 
                  minimize=True,     #the problem is a minimization problem.
                  max_eval=500,      #we evaluate maximum 500 times
                  max_iter=500,      #we have max 500 iterations
@@ -101,9 +101,9 @@ import subprocess, sys
 from subprocess import STDOUT, check_output
 
 #import our package, the surrogate model and the search space classes
-from BayesOpt import BayesOpt
-from BayesOpt.Surrogate import RandomForest
-from BayesOpt.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
+from mipego import mipego
+from mipego.Surrogate import RandomForest
+from mipego.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
 
 #some help packages
 import re
@@ -175,7 +175,7 @@ available_gpus = [0,1,2,3]
 model = RandomForest(levels=search_space.levels)
 
 #now define the optimizer.
-opt = BayesOpt(search_space, objective, model, 
+opt = mipego(search_space, objective, model, 
                  minimize=True, max_eval=None, max_iter=500, 
                  infill='MGFI', n_init_sample=10, 
                  n_point=4, n_job=4, 
