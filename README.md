@@ -1,5 +1,5 @@
 <p align="center"><img width=12.5% src="https://github.com/wangronin/BayesianOptimization/blob/master/media/logo.png"></p>
-<p align="center"><img width=60% src="https://github.com/wangronin/BayesianOptimization/blob/master/media/logo.png"></p>
+<p align="center"><img width=60% src="https://github.com/wangronin/BayesianOptimization/blob/master/media/textlogo.png"></p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 ![Python](https://img.shields.io/pypi/pyversions/ParallelBayesOpt.svg)
