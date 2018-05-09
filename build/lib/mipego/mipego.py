@@ -447,7 +447,7 @@ class mipego(object):
             self.iter_count += 1
             self.hist_f.append(self.incumbent.fitness)
 
-            self.logger.info('iteration {}, current incumbent is:'.format(self.iter_count))
+            self.logger.info('iteration {} with fitness {}, current incumbent is:'.format(self.iter_count, self.incumbent.fitness))
             self.logger.info(self.incumbent.to_dict())
 
             incumbent = self.incumbent
@@ -457,6 +457,7 @@ class mipego(object):
 
             #print "GPU no. {} is waiting for task on thread {}".format(gpu_no, gpu_no)
             if not self.check_stop():
+                self.logger.info('Data size is {}'.format(len(self.data)))
                 if len(self.data) >= self.n_init_sample:
                     self.fit_and_assess()
                     while True:
@@ -468,11 +469,14 @@ class mipego(object):
                             print(e)
                             print("Error selecting candidate, retrying in 60 seconds...")
                             time.sleep(60)
+                    q.put(confs_)
                 else:
                     samples = self._space.sampling(1)
-                    confs_ = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)][0]
+                    confs_ = Solution(samples[0], index=len(self.data), var_name=self.var_names)
                     #confs_ = self._to_dataframe(self._space.sampling(1))
-                q.put(confs_)
+                    if (q.empty()):
+                        q.put(confs_)
+                
             else:
                 break
 
