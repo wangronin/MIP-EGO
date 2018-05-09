@@ -2,7 +2,7 @@ Metadata-Version: 1.1
 Name: mipego
 Version: 0.9.9
 Summary: Mixed Integer Parallel - Efficient Global Optimization with GPU support
-Home-page: https://github.com/wangronin/BayesianOptimization
+Home-page: https://github.com/wangronin/MIP-EGO
 Author: Hao Wang and Bas van Stein
 Author-email: wangronin@gmail.com
 License: UNKNOWN
