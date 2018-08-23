@@ -19,7 +19,7 @@ dim = 2
 n_step = 100
 n_init_sample = 15
 
-def obj_func(x):
+def obj_func(x, gpu_no):
    x_r, x_i, x_d = np.array([x['C_0'],x['C_1']]), x['I'], x['N']
    if x_d == 'OK':
        tmp = 0
@@ -38,7 +38,8 @@ model = RandomForest(levels=search_space.levels)
 # model = RrandomForest(levels=search_space.levels, seed=1, max_features='sqrt')
 
 opt = mipego(search_space, obj_func, model, max_iter=n_step, random_seed=None,
-               n_init_sample=n_init_sample, n_point=1, n_job=1, minimize=True, 
-               verbose=True, optimizer='MIES')
+               n_init_sample=n_init_sample, n_point=2, n_job=2, minimize=True,
+               log_file="test.log", 
+               verbose=True, optimizer='MIES', available_gpus=[1,2])
 
 opt.run()

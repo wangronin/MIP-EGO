@@ -16,6 +16,7 @@ import numpy as np
 import queue
 import threading
 import time
+import copy
 
 
 from joblib import Parallel, delayed
@@ -106,6 +107,7 @@ class mipego(object):
         self.obj_func = obj_func
         self.noisy = noisy
         self.surrogate = surrogate
+        self.async_surrogates = {}
         self.n_point = n_point
         self.n_jobs = min(self.n_point, n_job)
         self.available_gpus = available_gpus
@@ -308,7 +310,7 @@ class mipego(object):
                 for x in data:
                     self._eval_one(x)
 
-    def fit_and_assess(self):
+    def fit_and_assess(self, surrogate = None):
         while True:
             try:
                 X = np.atleast_2d([s.tolist() for s in self.data])
@@ -320,14 +322,22 @@ class mipego(object):
                 fitness_scaled = (fitness - _min) / (_max - _min)
 
                 # fit the surrogate model
-                self.surrogate.fit(X, fitness_scaled)
+                if (surrogate is None):
+                    self.surrogate.fit(X, fitness_scaled)
+                    self.is_update = True
+                    fitness_hat = self.surrogate.predict(X)
+                else:
+                    surrogate.fit(X,  fitness_scaled)
+                    self.is_update = True
+                    fitness_hat = surrogate.predict(X)
                 
-                self.is_update = True
-                fitness_hat = self.surrogate.predict(X)
+                
                 r2 = r2_score(fitness_scaled, fitness_hat)
                 break
             except Exception as e:
                 print("Error fitting model, retrying...")
+                print(X)
+                print(fitness)
                 print(e)
                 time.sleep(15)
         # TODO: in case r2 is really poor, re-fit the model or transform the input? 
@@ -424,17 +434,24 @@ class mipego(object):
 
     def gpuworker(self, q, gpu_no):
         "GPU worker function "
+
+        self.async_surrogates[gpu_no] = copy.deepcopy(self.surrogate);
         while True:
             self.logger.info('GPU no. {} is waiting for task'.format(gpu_no))
 
             confs_ = q.get()
-            self._eval_gpu(confs_, gpu_no)[0] #will write the result to confs_
+
+            time.sleep(gpu_no)
+
+            self.logger.info('Evaluating:')
+            self.logger.info(confs_.to_dict())
+            confs_ = self._eval_gpu(confs_, gpu_no)[0] #will write the result to confs_
 
             
             if self.data is None:
                 self.data = [confs_]
             else: 
-                self.data += confs_
+                self.data += [confs_]
             perf = np.array([s.fitness for s in self.data])
             #self.data.perf = pd.to_numeric(self.data.perf)
             #self.eval_count += 1
@@ -447,7 +464,7 @@ class mipego(object):
             self.iter_count += 1
             self.hist_f.append(self.incumbent.fitness)
 
-            self.logger.info('iteration {} with fitness {}, current incumbent is:'.format(self.iter_count, self.incumbent.fitness))
+            self.logger.info('iteration {} with current fitness {}, current incumbent is:'.format(self.iter_count, self.incumbent.fitness))
             self.logger.info(self.incumbent.to_dict())
 
             incumbent = self.incumbent
@@ -459,11 +476,11 @@ class mipego(object):
             if not self.check_stop():
                 self.logger.info('Data size is {}'.format(len(self.data)))
                 if len(self.data) >= self.n_init_sample:
-                    self.fit_and_assess()
+                    self.fit_and_assess(surrogate = self.async_surrogates[gpu_no])
                     while True:
                         try:
-                            X, infill_value = self.arg_max_acquisition()
-                            confs_ = Solution(X, index=len(self.data), var_name=self.var_names)
+                            X, infill_value = self.arg_max_acquisition(surrogate = self.async_surrogates[gpu_no])
+                            confs_ = Solution(X, index=len(self.data)+q.qsize(), var_name=self.var_names)
                             break
                         except Exception as e:
                             print(e)
@@ -472,7 +489,7 @@ class mipego(object):
                     q.put(confs_)
                 else:
                     samples = self._space.sampling(1)
-                    confs_ = Solution(samples[0], index=len(self.data), var_name=self.var_names)
+                    confs_ = Solution(samples[0], index=len(self.data)+q.qsize(), var_name=self.var_names)
                     #confs_ = self._to_dataframe(self._space.sampling(1))
                     if (q.empty()):
                         q.put(confs_)
@@ -590,12 +607,13 @@ class mipego(object):
 
         return len(self.stop_dict)
 
-    def _acquisition(self, plugin=None, dx=False):
+    def _acquisition(self, plugin=None, dx=False, surrogate=None):
         if plugin is None:
             # plugin = np.min(self.data.perf) if self.minimize else -np.max(self.data.perf)
             # Note that performance are normalized when building the surrogate
             plugin = 0 if self.minimize else -1
-            
+        if (surrogate is None):
+                surrogate = self.surrogate;
         if self.n_point > 1:  # multi-point method
             # create a portofolio of n infill-criteria by 
             # instantiating n 't' values from the log-normal distribution
@@ -603,16 +621,16 @@ class mipego(object):
             # TODO: perhaps also introduce cooling schedule for MGF
             # TODO: other method: niching, UCB, q-EI
             tt = np.exp(0.5 * np.random.randn())
-            acquisition_func = MGFI(self.surrogate, plugin, minimize=self.minimize, t=tt)
+            acquisition_func = MGFI(surrogate, plugin, minimize=self.minimize, t=tt)
             
         elif self.n_point == 1: # sequential mode
             
             if self.infill == 'EI':
-                acquisition_func = EI(self.surrogate, plugin, minimize=self.minimize)
+                acquisition_func = EI(surrogate, plugin, minimize=self.minimize)
             elif self.infill == 'PI':
-                acquisition_func = PI(self.surrogate, plugin, minimize=self.minimize)
+                acquisition_func = PI(surrogate, plugin, minimize=self.minimize)
             elif self.infill == 'MGFI':
-                acquisition_func = MGFI(self.surrogate, plugin, minimize=self.minimize, t=self.t)
+                acquisition_func = MGFI(surrogate, plugin, minimize=self.minimize, t=self.t)
                 self._annealling()
             elif self.infill == 'UCB':
                 raise NotImplementedError
@@ -628,7 +646,7 @@ class mipego(object):
             # TODO: verify this
             self.t = self.c / np.log(self.iter_count + 1 + 1)
         
-    def arg_max_acquisition(self, plugin=None):
+    def arg_max_acquisition(self, plugin=None, surrogate=None):
         """
         Global Optimization on the acqusition function 
         """
@@ -636,7 +654,7 @@ class mipego(object):
             self.logger.info('acquisition function optimziation...')
         
         dx = True if self._optimizer == 'BFGS' else False
-        obj_func = [self._acquisition(plugin, dx=dx) for i in range(self.n_point)]
+        obj_func = [self._acquisition(plugin, dx=dx, surrogate=surrogate) for i in range(self.n_point)]
 
         if self.n_point == 1:
             candidates, values = self._argmax_multistart(obj_func[0])

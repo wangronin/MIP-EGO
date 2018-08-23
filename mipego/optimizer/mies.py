@@ -64,7 +64,7 @@ class Individual(list):
 # TODO: improve efficiency, e.g. compile it with cython
 class mies(object):
     def __init__(self, search_space, obj_func, x0=None, ftarget=None, max_eval=np.inf,
-                 minimize=True, mu_=4, lambda_=10, sigma0=None, eta0=None, P0=None,
+                 minimize=True, mu_=4, lambda_=10, sigma0=None, eta0=None, P0=None, plus_selection=False,
                  verbose=False):
 
         self.verbose = verbose
@@ -73,7 +73,7 @@ class mies(object):
         self.eval_count = 0
         self.iter_count = 0
         self.max_eval = max_eval
-        self.plus_selection = False   # TODO: add this as an option
+        self.plus_selection = False 
         self.minimize = minimize
         self.obj_func = obj_func
         self.stop_dict = {}
