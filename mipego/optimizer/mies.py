@@ -133,7 +133,7 @@ class mies(object):
             if eta0 is not None:
                 par = np.c_[par, np.tile(eta0, (self.mu_, 1))]
             if P0 is not None:
-                par = np.c_[par, np.tile([P0] * self.N_i, (self.mu_, 1))]
+                par = np.c_[par, np.tile([P0] * self.N_p, (self.mu_, 1))]
             
             self.pop_mu = Individual([Individual(_) for _ in np.c_[x, par].tolist()])
             self.f_mu = self.evaluate(self.pop_mu)
