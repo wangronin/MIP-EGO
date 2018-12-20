@@ -317,9 +317,15 @@ class mipego(object):
                 fitness = np.array([s.fitness for s in self.data])
 
                 # normalization the response for numerical stability
-                # e.g., for MGF-based acquisition function
-                _min, _max = np.min(fitness), np.max(fitness)
-                fitness_scaled = (fitness - _min) / (_max - _min)
+                # e.g., for MGF-based acquisition function\
+                if len(fitness) == 1: # for the case n_init_sample=1
+                    fitness_scaled = fitness
+                else:
+                    _min, _max = np.min(fitness), np.max(fitness)
+                    if not _min == _max: # for the case of flat fitness                    
+                        fitness_scaled = (fitness - _min) / (_max - _min)
+                    else:
+                        fitness_scaled = fitness
 
                 # fit the surrogate model
                 if (surrogate is None):

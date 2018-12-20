@@ -57,7 +57,7 @@ class UCB(InfillCriteria):
     Upper Confidence Bound 
     """
     def __init__(self, model, plugin=None, minimize=True, alpha=1e-10):
-        super(EpsilonPI, self).__init__(model, plugin, minimize)
+        super(UCB, self).__init__(model, plugin, minimize)
         self.alpha = alpha
 
     def __call__(self, X, dx=False):
@@ -90,9 +90,10 @@ class EI(InfillCriteria):
         # if the Kriging variance is to small
         # TODO: check the rationale of 1e-6 and why the ratio if intended
         # TODO: implement a counterpart of 'sigma2' for randomforest
-        if hasattr(self.model, 'sigma2'):
-            if sd / np.sqrt(self.model.sigma2) < 1e-6:
-                return (np.array([0.]),  np.zeros((len(X[0]), 1))) if dx else 0.
+        
+        if sd < 1e-6:
+            f_value = (np.array([0.]),  np.zeros((len(X[0]), 1))) if dx else np.array([0.])
+            return f_value
         try:
             # TODO: I have save xcr_ becasue xcr * sd != xcr_ numerically
             # find out the cause of such an error, probably representation error...
