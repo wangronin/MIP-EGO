@@ -145,6 +145,7 @@ class NominalSpace(SearchSpace):
             self.levels = OrderedDict([(i, self.bounds[i]) for i in range(self.dim)])
             self._levels = self._levels * N
             self._n_levels = self._n_levels * N
+            self._set_index()
             return self
     
     def __rmul__(self, N):
@@ -180,6 +181,7 @@ class OrdinalSpace(SearchSpace):
             self.var_name = np.array(['{}_{}'.format(v, k) for k in range(N) for v in self.var_name])
             self.bounds = self.bounds * N
             self._lb, self._ub = self._lb * N, self._ub * N
+            self._set_index()
             return self
     
     def __rmul__(self, N):

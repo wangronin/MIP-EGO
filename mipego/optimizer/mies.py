@@ -110,14 +110,14 @@ class mies(object):
             eta0 = 0.05 * (self.bounds_i[:, 1] - self.bounds_i[:, 0]) 
         if P0 is None and self.N_d:
             P0 = 1. / self.N_d
-            
+
         # column names of the dataframe: used for slicing
         self._id_var = np.arange(self.dim)
         self._id_sigma = np.arange(self.N_r) + len(self._id_var) if self.N_r else []
         self._id_eta = np.arange(self.N_i) + len(self._id_var) + len(self._id_sigma) if self.N_i else []
         self._id_p = np.arange(self.N_p) + len(self._id_var) + len(self._id_sigma) + len(self._id_eta) if self.N_p else []
         self._id_hyperpar = np.arange(self.dim, self._len)
-            
+
         # initialize the populations
         if x0 is not None:                         # given x0
             individual0 = Individual(np.r_[x0, sigma0, eta0, [P0] * self.N_p])
@@ -128,13 +128,15 @@ class mies(object):
             self.fopt = sum(fitness0)
         else:
             x = np.asarray(self._space.sampling(self.mu_), dtype='object')  # uniform sampling
-            
-            par = np.tile(sigma0, (self.mu_, 1))
-            if eta0 is not None:
-                par = np.c_[par, np.tile(eta0, (self.mu_, 1))]
-            if P0 is not None:
-                par = np.c_[par, np.tile([P0] * self.N_p, (self.mu_, 1))]
-            
+            par = []
+            if self.N_r:
+                par += [np.tile(sigma0, (self.mu_, 1))]
+            if self.N_i:
+                par += [np.tile(eta0, (self.mu_, 1))]
+            if self.N_p:
+                par += [np.tile([P0] * self.N_p, (self.mu_, 1))]
+
+            par = np.concatenate(par, axis=1)
             self.pop_mu = Individual([Individual(_) for _ in np.c_[x, par].tolist()])
             self.f_mu = self.evaluate(self.pop_mu)
             self.fopt = min(self.f_mu) if self.minimize else max(self.f_mu)
@@ -168,7 +170,7 @@ class mies(object):
         if id1 != id2:
             p2 = self.pop_mu[id2]
             # intermediate recombination for the mutation strengths
-            p1[self._id_hyperpar] = (np.array(p1[self._id_hyperpar]) + \
+            p1[self._id_hyperpar] = (np.array(p1[self._id_hyperpar]) +
                 np.array(p2[self._id_hyperpar])) / 2
             # dominant recombination
             mask = randn(self.dim) > 0.5
@@ -327,9 +329,9 @@ if __name__ == '__main__':
             x = np.asarray(x, dtype='float')
             return np.sum(x ** 2.)
         
-        dim = 2
-        space = ContinuousSpace([-5, 5]) * dim
-        if 11 < 2:
+        dim = 4
+        space = NominalSpace([0, 1]) * dim
+        if 1 < 2:
             # test for continous maximization problem
             opt = mies(space, fitness, max_eval=500, minimize=False, verbose=True)
             xopt, fopt, stop_dict = opt.optimize()
