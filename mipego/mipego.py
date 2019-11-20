@@ -69,13 +69,15 @@ class mipego(object):
     Generic Bayesian optimization algorithm
     """
     #CHRIS added two surrogate models
-    def __init__(self, search_space, obj_func, time_surrogate, loss_surrogate, ftarget=None,
+    def __init__(self, search_space, obj_func, surrogate, second_surrogate=None, ftarget=None,
                  minimize=True, noisy=False, max_eval=None, max_iter=None, 
-                 infill='HVI', t0=2, tf=1e-1, schedule=None,
+                 infill='MGFI', t0=2, tf=1e-1, schedule=None,
                  n_init_sample=None, n_point=1, n_job=1, backend='multiprocessing',
                  n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
                  log_file=None, data_file=None, verbose=False, random_seed=None,
-                 available_gpus=[],bi_objective=False, save_name=None,ref_time=3000.0,ref_loss=3.0, hvi_alpha=0.1, ignore_gpu=[],eval_epochs=1,data_augmentation=False,use_validation=False):
+                 available_gpus=[],bi_objective=False, save_name=None,
+                 ref_time=3000.0, ref_loss=3.0, hvi_alpha=0.1, ignore_gpu=[],
+                 eval_epochs=1, data_augmentation=False, use_validation=False):
         """
         parameter
         ---------
@@ -83,6 +85,7 @@ class mipego(object):
             obj_func : callable,
                 the objective function to optimize
             surrogate: surrogate model, currently support either GPR or random forest
+            second_surrogate: second surrogate model for bi-objective optimization.
             minimize : bool,
                 minimize or maximize
             noisy : bool,
@@ -91,6 +94,13 @@ class mipego(object):
                 maximal number of evaluations on the objective function
             max_iter : int,
                 maximal iteration
+            infill: string
+                infill criterion used in optimization
+                For bi-objective this should be set to HVI (hyper-volume indicator)
+                Other options are MGFI, IE, and PI
+                <TODO> add sanity check for this.
+            t0=2, tf=1e-1, schedule=None
+                Temperature parameters for the MGFI infill criterion.
             n_init_sample : int,
                 the size of inital Design of Experiment (DoE),
                 default: 20 * dim
@@ -132,8 +142,8 @@ class mipego(object):
         self.var_names = self._space.var_name.tolist()
         self.obj_func = obj_func
         self.noisy = noisy
-        self.time_surrogate = time_surrogate#CHRIS added two surrogates
-        self.loss_surrogate = loss_surrogate
+        self.time_surrogate = second_surrogate #CHRIS added two surrogates
+        self.loss_surrogate = surrogate
         self.async_time_surrogates = {}
         self.async_loss_surrogates = {}
         self.all_time_r2 = []
