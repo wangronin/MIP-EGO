@@ -12,6 +12,7 @@ import numpy as np
 from numpy import sqrt, exp, pi
 from scipy.stats import norm
 from abc import ABCMeta, abstractmethod
+from .Bi_Objective import *
 
 # warnings.filterwarnings("error")
 
@@ -51,13 +52,98 @@ class InfillCriteria:
         return np.atleast_2d(X)
         # return [X] if not hasattr(X[0], '__iter__') else X
 
+#TODO_CHRIS here add class HVI(InfillCriteria)
+#Overwrite __init__(), _predict() and _gradient() and everything else to make it work
+#with two surrogate models
+#use lower confidence bound
+class HVI(InfillCriteria):
+    """
+    Hyper Volume Improvement
+    """
+    def __init__(self, model=None, time_model=None, loss_model=None, plugin=None, minimize=True, alpha=0.1, solutions=None, n_left=None, max_iter=None, sol=None,ref_time=None,ref_loss=None):
+        assert hasattr(time_model, 'predict')
+        assert hasattr(loss_model, 'predict')
+        self.time_model = time_model
+        self.loss_model = loss_model
+        self.minimize = minimize
+        #self.alpha = alpha#CHRIS alpha for Lower Confidence Bound
+        self.alpha = 0.1 + 0.8*(n_left/max_iter)#CHRIS variable alpha for Lower Confidence Bound
+        self.solutions = solutions
+        self.n_left = n_left
+        self.max_iter = max_iter
+        self.Solution = sol
+        self.par = pareto(self.solutions)
+        self.ref_time = ref_time
+        self.ref_loss = ref_loss
+        # change maximization problem to minimization
+        self.plugin = plugin if self.minimize else -plugin
+        if not self.minimize:
+            print("Warning: HVI might not work correctly for maximization")#TODO_CHRIS make shure this does work for maximization
+        if self.plugin is None:
+            #self.plugin = np.min(model.y) if minimize else -np.max(self.model.y)
+            self.plugin = np.min(time_model.y) + np.min(loss_model.y) if minimize else -np.max(self.time_model.y)-np.max(self.loss_model.y)#CHRIS take the sum of mins, because we need to do something
+
+    def __call__(self, X, dx=False):
+        X = self.check_X(X)
+        y_hat, time_sd,loss_sd = self._predict(X)
+        return y_hat
+
+    def _predict(self, X):
+        y_time_hat, time_sd2 = self.time_model.predict(X, eval_MSE=True)
+        y_loss_hat, loss_sd2 = self.loss_model.predict(X, eval_MSE=True)
+        if not self.minimize:
+            y_time_hat = -y_time_hat
+            y_loss_hat = -y_loss_hat
+        #CHRIS use y_hat and sd2 to calculate LCB of expected time and loss values, pass these to s-metric and calculate hypervolume improvement
+        y_time_hat = y_time_hat[0]
+        time_sd2 = time_sd2[0]
+        y_loss_hat = y_loss_hat[0]
+        loss_sd2 = loss_sd2[0]
+        time_sd = sqrt(time_sd2)
+        loss_sd = sqrt(loss_sd2)
+        if self.alpha > 1.0 or self.alpha < 0:
+            print('error: alpha for Lower Confidence bound must be between 0.0 and 1.0')
+            exit()
+        elif self.alpha >= 0.5:
+            exp_time, _ = norm.interval(self.alpha-(1.0-self.alpha),loc=y_time_hat,scale=time_sd)#CHRIS Lower Confidence Bound
+            exp_loss, _ = norm.interval(self.alpha-(1.0-self.alpha),loc=y_loss_hat,scale=loss_sd)#CHRIS Lower Confidence Bound
+        else:
+            _,exp_time = norm.interval(1.0-2.0*self.alpha,loc=y_time_hat,scale=time_sd)#CHRIS Lower Confidence Bound
+            _,exp_loss = norm.interval(1.0-2.0*self.alpha,loc=y_loss_hat,scale=loss_sd)#CHRIS Lower Confidence Bound
+        expected = self.Solution(X[0])
+        expected.time = exp_time
+        expected.loss = exp_loss
+        
+        hyp_vol_imp = s_metric(expected, self.solutions, self.n_left,self.max_iter,ref_time=self.ref_time,ref_loss=self.ref_loss,par=self.par)
+        
+        return hyp_vol_imp, time_sd, loss_sd
+
+    def _gradient(self, X):
+        #CHRIS returned gradient is sum of gradient of both models
+        print("HVI gradient() is called?")
+        y_time_dx, sd2_time_dx = self.time_model.gradient(X)
+        y_loss_dx, sd2_loss_dx = self.loss_model.gradient(X)
+        y_dx, sd2_dx = y_time_dx + y_loss_dx, sd2_time_dx + sd2_loss_dx
+        if not self.minimize:
+            y_dx = -y_dx
+        return y_dx, sd2_dx
+
+class MONTECARLO(InfillCriteria):
+    """
+    Monte Carlo method, returns random value
+    """
+    def __call__(self, X, dx=False):
+        if dx:
+            return np.random.rand(),np.random.rand()
+        return np.random.rand()
+
 # TODO: test UCB implementation
 class UCB(InfillCriteria):
     """
     Upper Confidence Bound 
     """
     def __init__(self, model, plugin=None, minimize=True, alpha=1e-10):
-        super(UCB, self).__init__(model, plugin, minimize)
+        super(UCB, self).__init__(model, plugin, minimize)#Xin Guo improvement UCB used to be EpsilonPI
         self.alpha = alpha
 
     def __call__(self, X, dx=False):
@@ -90,10 +176,13 @@ class EI(InfillCriteria):
         # if the Kriging variance is to small
         # TODO: check the rationale of 1e-6 and why the ratio if intended
         # TODO: implement a counterpart of 'sigma2' for randomforest
-        
-        if sd < 1e-6:
+        #if hasattr(self.model, 'sigma2'):#Xin Guo improvement
+        #    if sd / np.sqrt(self.model.sigma2) < 1e-6:
+        #        return (np.array([0.]),  np.zeros((len(X[0]), 1))) if dx else 0.
+        if sd < 1e-6:#Xin Guo improvement
             f_value = (np.array([0.]),  np.zeros((len(X[0]), 1))) if dx else np.array([0.])
             return f_value
+    
         try:
             # TODO: I have save xcr_ becasue xcr * sd != xcr_ numerically
             # find out the cause of such an error, probably representation error...

@@ -30,7 +30,7 @@ class RandomForest(RandomForestRegressor):
     Extension on the sklearn RandomForestRegressor class
     Added functionality: empirical MSE of predictions
     """
-    def __init__(self, levels=None, **kwargs):
+    def __init__(self, levels=None,n_estimators=100, workaround=False, **kwargs):
         """
         parameter
         ---------
@@ -39,8 +39,10 @@ class RandomForest(RandomForestRegressor):
             values: list of levels of categorical variables
         """
         super(RandomForest, self).__init__(**kwargs)
-
-        if levels is not None:
+        
+        self.n_estimators=n_estimators #CHRIS now able to set number of trees in forest
+        self.workaround = workaround
+        if levels is not None and not workaround:
             assert isinstance(levels, dict)
             self._levels = levels
             self._cat_idx = sorted(self._levels.keys())
@@ -57,13 +59,26 @@ class RandomForest(RandomForestRegressor):
             # TODO: investigate the upper bound (in the sense of cpu time)
             # for categorical levels/variable number
             # in the future, maybe implement binary/multi-value split
+        else:
+            assert isinstance(levels, dict)
+            self._levels = levels
+            self._cat_idx = sorted(self._levels.keys())
+            self._n_values = [len(self._levels[i]) for i in self._cat_idx]
+            # encode categorical variables to integer type
+            self._le = [LabelEncoder().fit(self._levels[i]) for i in self._cat_idx]
+            # encode integers to binary
+            _max = max(self._n_values)
+            data = atleast_2d([list(range(n)) * (_max // n) + \
+                               list(range(_max % n)) for n in self._n_values]).T
+            #self._enc = [LabelEncoder().fit(self._levels[i]) for i in self._cat_idx]
 
     def _check_X(self, X):
         # X_ = array(X, dtype=object)
         X_ = atleast_2d(X)
         if hasattr(self, '_levels'):
             X_cat = array([self._le[i].transform(X_[:, k]) for i, k in enumerate(self._cat_idx)]).T
-            X_cat = self._enc.transform(X_cat)
+            if (not self.workaround):
+                X_cat = self._enc.transform(X_cat)
             X = np.c_[np.delete(X_, self._cat_idx, 1).astype(float), X_cat]
         return X
 
