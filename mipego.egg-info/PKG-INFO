@@ -1,6 +1,6 @@
-Metadata-Version: 1.1
+Metadata-Version: 2.1
 Name: mipego
-Version: 1.0.2
+Version: 1.1.0.dev1
 Summary: Mixed Integer Parallel - Efficient Global Optimization with GPU support
 Home-page: https://github.com/wangronin/MIP-EGO
 Author: Hao Wang and Bas van Stein
@@ -219,3 +219,4 @@ Classifier: Programming Language :: Python :: 2.7
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.5
 Classifier: Programming Language :: Python :: 3.6
+Description-Content-Type: text/markdown

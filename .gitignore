@@ -1,2 +1,5 @@
 BayesOpt/optimizer/__pycache__
 *.pyc
+test.log
+build
+dist

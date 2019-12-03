@@ -3,6 +3,7 @@ MANIFEST.in
 README.md
 setup.cfg
 setup.py
+mipego/Bi_Objective.py
 mipego/InfillCriteria.py
 mipego/SearchSpace.py
 mipego/Surrogate.py
