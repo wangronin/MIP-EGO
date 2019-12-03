@@ -13,7 +13,7 @@ from __future__ import print_function
 import dill, functools, itertools, copyreg, logging
 import numpy as np
 
-import gputil as gp
+import GPUtil as gp
 
 import queue
 import threading

@@ -53,7 +53,7 @@ class RandomForest(RandomForestRegressor):
             _max = max(self._n_values)
             data = atleast_2d([list(range(n)) * (_max // n) + \
                 list(range(_max % n)) for n in self._n_values]).T
-            self._enc = OneHotEncoder(n_values=self._n_values, sparse=False)
+            self._enc = OneHotEncoder(categories=self._n_values, sparse=False)
             self._enc.fit(data)
             # TODO: using such encoding, feature number will increase drastically
             # TODO: investigate the upper bound (in the sense of cpu time)
