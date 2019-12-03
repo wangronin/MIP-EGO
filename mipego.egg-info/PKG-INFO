@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: mipego
-Version: 1.1.0.dev1
+Version: 1.1.0.dev2
 Summary: Mixed Integer Parallel - Efficient Global Optimization with GPU support
 Home-page: https://github.com/wangronin/MIP-EGO
 Author: Hao Wang and Bas van Stein
