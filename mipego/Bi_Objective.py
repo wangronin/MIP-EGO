@@ -3,43 +3,35 @@ import copy
 
 def s_metric(expected, solutions,n_left,max_iter,ref_time=None,ref_loss=None,par=None):
     sol_and_exp = copy.deepcopy(solutions)
-    sol_and_exp.append(expected)#CHRIS existing solutions and expected solution unified
+    sol_and_exp.append(expected)#existing solutions and expected solution unified
     if par is None:
-        par = pareto(solutions)#CHRIS pareto front of existing solutions
+        par = pareto(solutions)#pareto front of existing solutions
     par_and_exp = copy.deepcopy(par)
     par_and_exp.append(expected)
     par_and_exp = pareto(par_and_exp)
     
-    #print("n_left, max_iter:")
-    #print(n_left,max_iter)
-    #CHRIS calculate epsilon vector
-    eps = 0.98 - 0.08*(n_left/max_iter)#CHRIS vary eps starting at 10% going down to 2%
+    #calculate epsilon vector
+    eps = 0.98 - 0.08*(n_left/max_iter)#vary eps starting at 10% going down to 2%
     eps_par = copy.deepcopy(par)
     for x in eps_par:
         x.time *= eps
         x.loss *= eps
     val=0.0
-    skip_hyp_vol = False #CHRIS in case that the expected point lies outside the rectangle formed by the reference point and (0,0), and that the expected point is also not dominated (this can happen), the hyper volume must not be calculated
+    skip_hyp_vol = False #in case that the expected point lies outside the rectangle formed by the reference point and (0,0), and that the expected point is also not dominated (this can happen), the hyper volume must not be calculated
     if (not ref_time is None) and (expected.time > ref_time):
         skip_hyp_vol = True
     if (not ref_loss is None) and (expected.loss > ref_loss):
         skip_hyp_vol = True
 
     if (not dominated(expected, eps_par)) and (not skip_hyp_vol):
-        #CHRIS non epsilon dominated solutions receive benefit of hypervolume
+        #non epsilon dominated solutions receive benefit of hypervolume
         val += (hyper_vol(par_and_exp,sol_and_exp,ref_time=ref_time,ref_loss=ref_loss)-hyper_vol(par,sol_and_exp,ref_time=ref_time,ref_loss=ref_loss))
     else:
-        #CHRIS epsilon dominated solutions only receive penalty for inferior objectives
-        #val -= penalty(exp_plus_eps, par)#CHRIS changed exp_plus_eps to expected because pareto front values got too much penalty. With exp_plus_eps is the hump version, With epxpected is the normal version
-        #val -= eps_penalty(expected,par)
+        #epsilon dominated solutions only receive penalty for inferior objectives
         pass
     if dominated(expected,par):
-        #CHRIS dominated expected point receives penalty
+        #dominated expected point receives penalty
         val -= penalty(expected,solutions)
-    #print('pareto-front:')
-    #if len(par) > 0:
-    #    for x in par:
-    #        print('time: ' + str(x.time) + ' loss: ' + str(x.loss) + ' fit:' + str(x.fitness))
     return val
 
 def penalty(expected,solutions):
@@ -141,7 +133,7 @@ def pareto(solutions):
     return par
 
 def eps_penalty(solution,par):
-    #TODO_CHRIS penalty of epsilon point by dominated paretofron only, reuse penalty function
+    #TODO_penalty of epsilon point by dominated paretofron only, reuse penalty function
     val = 0.0
     for i in range(len(par)):
         if solution.time > par[i].time:
@@ -160,89 +152,3 @@ def test_func_1(x):
 
 def test_func_2(x):
     return x**2 + np.random.rand()
-
-##TODO_CHRIS Point just for test code
-#class Point:
-#    def __init__(self,x):
-#        self.x = x
-#        self.time = test_func_1(self.x)+80
-#        self.loss = test_func_2(self.x)+80
-#        self.fitness = 0.0
-#
-#def test(n_left):
-#    import matplotlib
-#    import matplotlib.pyplot as plt
-#    np.random.seed(42)
-#    max_iter = 200
-#    n = 100
-#    solutions = [0.0] * n
-#    for i in range(n):
-#        solutions[i] = Point(1-i/n)
-#    #solutions[0].time = 0.0
-#    #solutions[0].loss = 0.0
-#
-#    par = pareto(solutions)
-#
-#    for i in range(len(solutions)):
-#        other = copy.deepcopy(solutions)
-#        del other[i]
-#        solutions[i].fitness = s_metric(solutions[i],other,n_left,max_iter)
-#    kip = []
-#    for sol in solutions:
-#        kip.append(sol.fitness)
-#    for i in range(len(solutions)):
-#        other = copy.deepcopy(solutions)
-#        del other[i]
-#        solutions[i].fitness = s_metric(solutions[i],other,n_left,max_iter,par=par)
-#        print(solutions[i].fitness)
-#    klaas = []
-#    for sol in solutions:
-#        klaas.append(sol.fitness)
-#
-#    for i in range(len(kip)):
-#        print(kip[i] == klaas[i])
-#
-#
-#    #tests = [0.0] * 10
-#    #for i in range(len(tests)):
-#    #    tests[i] = Point(1-i/n)
-#    #    #tests[i].time -= 80
-#    #    #tests[i].loss -= 80
-#    #    tests[i].fitness = s_metric(tests[i],solutions,n_left,max_iter)
-#
-#    x = [0.0]*n
-#    y = [0.0]*n
-#    z = [0.0]*n
-#
-#    for i in range(n):
-#        x[i] = solutions[i].time
-#        y[i] = solutions[i].loss
-#        z[i] = solutions[i].fitness
-#    a = [0.0] * len(par)
-#    b = [0.0] * len(par)
-#    for i in range(len(par)):
-#        a[i] = par[i].time
-#        b[i] = par[i].loss
-#
-#    #a = [0.0] * len(tests)
-#    #b = [0.0] * len(tests)
-#    #c = [0.0] * len(tests)
-#    #for i in range(len(tests)):
-#    #    a[i] = tests[i].time
-#    #    b[i] = tests[i].loss
-#    #    c[i] = tests[i].fitness
-#    #for flip in a:
-#    #    x.append(flip)
-#    #for flip in b:
-#    #    y.append(flip)
-#    #for flip in c:
-#    #    z.append(flip)
-#
-#
-#    plt.scatter(x,y,c = z)
-#    plt.scatter(a,b,c = 'r')
-#    plt.xlabel('time')
-#    plt.ylabel('loss')
-#    plt.show()
-#
-#test(100)

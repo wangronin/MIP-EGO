@@ -20,7 +20,7 @@ import threading
 import time
 import copy
 
-import json #CHRIS to save and load data
+import json #to save and load data
 
 
 from joblib import Parallel, delayed
@@ -31,7 +31,7 @@ from .InfillCriteria import EI, PI, MGFI, HVI, MONTECARLO
 from .optimizer import mies
 from .utils import proportional_selection
 
-from .Bi_Objective import * #CHRIS added the Bi_Objective code
+from .Bi_Objective import * # added the Bi_Objective code by Christiaan Lamers
 
 # TODO: remove the usage of pandas here change it to customized np.ndarray
 # TODO: finalize the logging system
@@ -50,7 +50,7 @@ class Solution(np.ndarray):
         if obj is None: return
         # Needed for array slicing
         self.fitness = getattr(obj, 'fitness', None)
-        self.loss = getattr(obj, 'loss', None)#CHRIS added loss and time here
+        self.loss = getattr(obj, 'loss', None)# added loss and time here
         self.time = getattr(obj, 'time',None)
         self.n_eval = getattr(obj, 'n_eval', None)
         self.index = getattr(obj, 'index', None)
@@ -68,7 +68,6 @@ class mipego(object):
     """
     Generic Bayesian optimization algorithm
     """
-    #CHRIS added two surrogate models
     def __init__(self, search_space, obj_func, surrogate, second_surrogate=None, ftarget=None,
                  minimize=True, noisy=False, max_eval=None, max_iter=None, 
                  infill='MGFI', t0=2, tf=1e-1, schedule=None,
@@ -142,14 +141,14 @@ class mipego(object):
         self.var_names = self._space.var_name.tolist()
         self.obj_func = obj_func
         self.noisy = noisy
-        self.time_surrogate = second_surrogate #CHRIS added two surrogates
+        self.time_surrogate = second_surrogate 
         self.loss_surrogate = surrogate
         self.async_time_surrogates = {}
         self.async_loss_surrogates = {}
         self.all_time_r2 = []
         self.all_loss_r2 = []
         self.n_point = n_point
-        self.n_jobs = n_job #min(self.n_point, n_job)#CHRIS why restrict n_jobs with n_points?
+        self.n_jobs = n_job
         self.available_gpus = available_gpus
         self._parallel_backend = backend
         self.ftarget = ftarget 
@@ -162,13 +161,13 @@ class mipego(object):
         self.surr_time_mies_hist = []
         self.surr_loss_fit_hist = []
         self.surr_loss_mies_hist = []
-        self.time_between_gpu_hist = []#CHRIS time in gpuworker() that a network is not trained on a gpu
+        self.time_between_gpu_hist = []#time in gpuworker() that a network is not trained on a gpu
         self.eval_epochs = eval_epochs
         self.data_augmentation = data_augmentation
         self.use_validation = use_validation
         
         self.bi = bi_objective 
-        self.hvi_alpha = hvi_alpha #CHRIS allows variable lower confidence interval
+        self.hvi_alpha = hvi_alpha # allows variable lower confidence interval
         
         self.r_index = self._space.id_C       # index of continuous variable
         self.i_index = self._space.id_O       # index of integer variable
@@ -184,10 +183,10 @@ class mipego(object):
         self.init_n_eval = 1      
         self.max_eval = int(max_eval) if max_eval else np.inf
         self.max_iter = int(max_iter) if max_iter else np.inf
-        self.n_left = int(max_iter) if max_iter else np.inf #CHRIS counts number of iterations left
+        self.n_left = int(max_iter) if max_iter else np.inf # counts number of iterations left
         self.n_init_sample = self.dim * 20 if n_init_sample is None else int(n_init_sample)
-        self_eval_hist = [] #TODO_CHRIS remove this and make it work
-        self.eval_hist_time = [] #CHRIS added time and loss history
+        self_eval_hist = [] #TODO remove this and make it work
+        self.eval_hist_time = [] # added time and loss history
         self.eval_hist_loss = []
         self.eval_hist_id = []
         self.iter_count = 0
@@ -205,7 +204,7 @@ class mipego(object):
             
             # TODO: find a nicer way to integrate this part
             # cooling down to 1e-1
-            max_iter = self.max_eval - self.n_init_sample #TODO_CHRIS why is this here? max_iter is now infinite, while schedule is None, so if statement below does nothing (for current settings)
+            max_iter = self.max_eval - self.n_init_sample #TODO why is this here? max_iter is now infinite, while schedule is None, so if statement below does nothing (for current settings)
             if self.schedule == 'exp':                         # exponential
                 self.alpha = (self.tf / t0) ** (1. / max_iter) 
             elif self.schedule == 'linear':
@@ -250,7 +249,7 @@ class mipego(object):
         self.init_gpus = True
         self.evaluation_queue = queue.Queue()
         
-        #CHRIS initialize evaluation training history file
+        #initialize evaluation training history file
         if (self.save_name != None):
             with open(self.save_name + '_eval_train_hist.json', 'w') as f:
                 f.write('')
@@ -355,7 +354,7 @@ class mipego(object):
         x.time = time_loc / runs if time_ is None else (time_ * n_eval + time_loc) / x.n_eval
         x.loss = loss_loc / runs if loss_ is None else (loss_ * n_eval + loss_loc) / x.n_eval
 
-        self.eval_hist_loss += [loss_ans] #CHRIS added time and loss history
+        self.eval_hist_loss += [loss_ans] # added time and loss history
         self.eval_hist_time += [time_ans]
         self.eval_hist_id += [x.index] * runs
         
@@ -369,15 +368,9 @@ class mipego(object):
         time_ = x.time
         loss_ = x.loss
         n_eval = x.n_eval
-        gpu = 1 #TODO_CHRIS remove this, this is a bogus value to shut up an error
-        # try:
-        # ans = [self.obj_func(x.tolist()) for i in range(runs)]
-        # except:
-        #TODO_CHRIS make this work when runs != 1
-        #ans = [self.obj_func(x.to_dict()) for i in range(runs)]
+        gpu = 1 #TODO remove this, this is a bogus value to shut up an error
+
         ans = self.obj_func(x.to_dict(), gpu_no=gpu,eval_epochs=self.eval_epochs,save_name=self.save_name,data_augmentation=self.data_augmentation,use_validation=self.use_validation)
-        #print('_eval_one():')
-        #print(ans)#CHRIS this sometimes gave an error, so it is commented
         time_ans,loss_ans,success = ans[0],ans[1],ans[2]
         
         time = np.sum(time_ans)
@@ -386,18 +379,11 @@ class mipego(object):
         x.n_eval += runs
         x.time = time / runs if time_ is None else (time_ * n_eval + time) / x.n_eval
         x.loss = loss / runs if loss_ is None else (loss_ * n_eval + loss) / x.n_eval
-        
-        #fitness = np.sum(ans)
-        #
-        #x.n_eval += runs
-        #x.fitness = fitness / runs if fitness_ is None else (fitness_ * n_eval + fitness) / x.n_eval
 
-        #self.eval_count += runs#CHRIS no double counting
         self.eval_hist_loss += [x.loss]
         self.eval_hist_time += [x.time]
         self.eval_hist_id += [x.index] * runs
         
-        #return x, runs, ans, [x.index] * runs
         return x, runs, time, loss, [x.index] * runs
 
     def evaluate(self, data, runs=1):
@@ -410,8 +396,6 @@ class mipego(object):
             if self.n_jobs > 1:
                 if self._parallel_backend == 'multiprocessing': # parallel execution using joblib
                     res = Parallel(n_jobs=self.n_jobs, verbose=False)(delayed(self._eval_one, check_pickle=False)(x) for x in data)
-                    #return x, runs, ans, [x.index] * runs #TODO_CHRIS remove this
-                    #return x, runs, time, loss, [x.index] * runs
                     x, runs, hist_time, hist_loss, hist_id = zip(*res)
                     self.eval_count += sum(runs)
                     self.eval_hist_time += list(itertools.chain(*hist_time))
@@ -435,7 +419,7 @@ class mipego(object):
                 X = np.atleast_2d([s.tolist() for s in self.data])
                 time_fitness = np.array([s.time for s in self.data])
                 
-                #TODO_CHRIS is normalization really a good idea here? can be removed, or save scaling factor and give to s-metric (min and max)
+                #TODO: is normalization really a good idea here? can be removed, or save scaling factor and give to s-metric (min and max)
                 # normalization the response for numerical stability
                 # e.g., for MGF-based acquisition function
                 #_time_min, _time_max = np.min(time_fitness), np.max(time_fitness)
@@ -512,9 +496,9 @@ class mipego(object):
                     stop_timer = time.time()
                     self.surr_loss_mies_hist.append(stop_timer - start_timer)
                 
-                #TODO_CHRIS use s-metric to calculate fitness? this is just for logging, optimization (searching for candidate) takes place before this step, so what does surrogate.predict do? the fitting part is useful though
+                #TODO use s-metric to calculate fitness? this is just for logging, optimization (searching for candidate) takes place before this step, so what does surrogate.predict do? the fitting part is useful though
                 #fitness_hat = surrogate.predict(X)
-                #TODO_CHRIS, maybe it's usefull to cast time and loss variables to sms-ego fitness here
+                #TODO, maybe it's usefull to cast time and loss variables to sms-ego fitness here
                 
                 time_r2 = r2_score(time_fitness, time_fitness_hat)
                 loss_r2 = r2_score(loss_fitness, loss_fitness_hat)
@@ -560,8 +544,8 @@ class mipego(object):
         candidates_id = [x.index for x in X]
         # for noisy fitness: perform a proportional selection from the evaluated ones   
         if self.noisy:
-            #CHRIS after evaluate run S-metric on all solutions to determine fitness
-            for i in range(len(self.data)):#CHRIS this is a bottleneck
+            #after evaluate run S-metric on all solutions to determine fitness
+            for i in range(len(self.data)):# this is a bottleneck
                 other_solutions = copy.deepcopy(self.data)
                 del other_solutions[i]
                 self.data[i].fitness = s_metric(self.data[i], other_solutions,self.n_left,self.max_iter,ref_time=self.ref_time,ref_loss=self.ref_loss)
@@ -574,8 +558,8 @@ class mipego(object):
         print("n_left,max_iter:")
         print(self.n_left,self.max_iter)
         self.data += X
-        #CHRIS after evaluate run S-metric on all solutions to determine fitness
-        for i in range(len(self.data)):#CHRIS this is a bottleneck
+        # after evaluate run S-metric on all solutions to determine fitness
+        for i in range(len(self.data)):# this is a bottleneck
             other_solutions = copy.deepcopy(self.data)
             del other_solutions[i]
             self.data[i].fitness = s_metric(self.data[i], other_solutions,self.n_left,self.max_iter,ref_time=self.ref_time,ref_loss=self.ref_loss)
@@ -629,8 +613,8 @@ class mipego(object):
         self.data = [Solution(s, index=k, var_name=self.var_names) for k, s in enumerate(samples)]
         self.evaluate(self.data, runs=self.init_n_eval)
         
-        #CHRIS after evaluate run S-metric on all solutions to determine fitness
-        for i in range(len(self.data)):#CHRIS this is a bottleneck
+        # after evaluate run S-metric on all solutions to determine fitness
+        for i in range(len(self.data)):# this is a bottleneck
             other_solutions = copy.deepcopy(self.data)
             del other_solutions[i]
             self.data[i].fitness = s_metric(self.data[i], other_solutions,self.n_left,self.max_iter,ref_time=self.ref_time,ref_loss=self.ref_loss)
@@ -673,7 +657,7 @@ class mipego(object):
                 self.data += [confs_]
             
 
-            for i in range(len(self.data)):#CHRIS this is a bottleneck
+            for i in range(len(self.data)):# this is a bottleneck
                 other_solutions = copy.deepcopy(self.data)
                 del other_solutions[i]
                 self.data[i].fitness = s_metric(self.data[i], other_solutions,self.n_left,self.max_iter,ref_time=self.ref_time,ref_loss=self.ref_loss)
@@ -687,7 +671,7 @@ class mipego(object):
                     self.fit_and_assess(time_surrogate = self.async_time_surrogates[gpu_no], loss_surrogate = self.async_loss_surrogates[gpu_no])
                     while True:
                         try:
-                            X, infill_value = self.arg_max_acquisition(plugin=None, time_surrogate = self.async_time_surrogates[gpu_no], loss_surrogate=self.async_loss_surrogates[gpu_no],data=self.data ,n_left=self.n_left)#CHRIS two surrogates are needed
+                            X, infill_value = self.arg_max_acquisition(plugin=None, time_surrogate = self.async_time_surrogates[gpu_no], loss_surrogate=self.async_loss_surrogates[gpu_no],data=self.data ,n_left=self.n_left)# two surrogates are needed
                             confs_ = Solution(X, index=len(self.data)+q.qsize(), var_name=self.var_names)
                             break
                         except Exception as e:
@@ -705,7 +689,7 @@ class mipego(object):
             else:
                 break
             if (self.save_name != None):
-                self.save_data(self.save_name + '_intermediate')#CHRIS save data
+                self.save_data(self.save_name + '_intermediate')# save data
             stop_timer_2 = time.time()
             self.time_between_gpu_hist.append((stop_timer_1 - start_timer_1)+(stop_timer_2-start_timer_2))
 
@@ -770,9 +754,9 @@ class mipego(object):
 
             if self.n_jobs > len(self.available_gpus):
                 print("Not enough GPUs available for n_jobs")
-                return 1,1 #CHRIS changed "1" to "1,1". This avoids an error message
+                return 1,1 # changed "1" to "1,1". This avoids an error message
 
-            #self.n_point = 1 #set n_point to 1 because we only do one evaluation at a time (async)#CHRIS n_point is set to 1 at initialisation
+            #self.n_point = 1 #set n_point to 1 because we only do one evaluation at a time (async)# n_point is set to 1 at initialisation
             # initialize
             self.logger.info('selected time_surrogate model: {}'.format(self.time_surrogate.__class__))
             self.logger.info('selected loss_surrogate model: {}'.format(self.loss_surrogate.__class__))
@@ -787,7 +771,7 @@ class mipego(object):
                 for i in range(self.n_init_sample):
                     self.evaluation_queue.put(datasamples[i])
 
-                self.iter_count -= self.n_init_sample#CHRIS because initial samples are in queue, counters count them as normal samples, so this needs to be coutered
+                self.iter_count -= self.n_init_sample# because initial samples are in queue, counters count them as normal samples, so this needs to be coutered
                 self.n_left += self.n_init_sample
             else:
                 for i in range(self.n_jobs):
@@ -822,23 +806,23 @@ class mipego(object):
 
             print('\n\n All threads should now be done. Finishing program...\n\n')
             if (self.save_name != None):
-                self.save_data(self.save_name)#CHRIS save data
+                self.save_data(self.save_name)#save data
 
             self.stop_dict['n_eval'] = self.eval_count
             self.stop_dict['n_iter'] = self.iter_count
 
-            return #self.incumbent, self.stop_dict #CHRIS self.incumbent does not exist anymore
+            return #self.incumbent, self.stop_dict #self.incumbent does not exist anymore
 
         else:
 
             while not self.check_stop():
                 self.step()
                 if (self.save_name != None):
-                    self.save_data(self.save_name)#CHRIS save data
+                    self.save_data(self.save_name)#save data
 
             self.stop_dict['n_eval'] = self.eval_count
             self.stop_dict['n_iter'] = self.iter_count
-            return #self.incumbent, self.stop_dict #CHRIS self.incumbent does not exist anymore
+            return #self.incumbent, self.stop_dict #self.incumbent does not exist anymore
 
     def check_stop(self):
         # TODO: add more stop criteria
@@ -859,7 +843,7 @@ class mipego(object):
             # plugin = np.min(self.data.perf) if self.minimize else -np.max(self.data.perf)
             # Note that performance are normalized when building the surrogate
             plugin = 0 if self.minimize else -1
-        #CHRIS here two surrogate functions are needed
+        #here two surrogate functions are needed
         if (time_surrogate is None):
             time_surrogate = self.time_surrogate;
         if (loss_surrogate is None):
@@ -900,7 +884,7 @@ class mipego(object):
             self.logger.info('acquisition function optimziation...')
         
         dx = True if self._optimizer == 'BFGS' else False
-        #CHRIS two surrogate functions must be passed
+        #two surrogate functions must be passed
         obj_func = [self._acquisition(plugin, dx=dx, time_surrogate=time_surrogate, loss_surrogate=loss_surrogate,n_left=n_left,max_iter=max_iter) for i in range(self.n_point)]
 
         if self.n_point == 1:
@@ -941,7 +925,7 @@ class mipego(object):
                                      " state: %s" % stop_dict)
                                 
             elif self._optimizer == 'MIES':
-                #CHRIS here send to MIES optimizer that uses s-metric as obj_func
+                #here send to MIES optimizer that uses s-metric as obj_func
                 opt = mies(self._space, obj_func, max_eval=eval_budget, minimize=False, verbose=False, plus_selection=False)
                 xopt_, fopt_, stop_dict = opt.optimize()
 

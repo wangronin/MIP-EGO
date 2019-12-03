@@ -40,7 +40,7 @@ class RandomForest(RandomForestRegressor):
         """
         super(RandomForest, self).__init__(**kwargs)
         
-        self.n_estimators=n_estimators #CHRIS now able to set number of trees in forest
+        self.n_estimators=n_estimators #now able to set number of trees in forest
         self.workaround = workaround
         if levels is not None and not workaround:
             assert isinstance(levels, dict)
