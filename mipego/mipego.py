@@ -76,7 +76,7 @@ class mipego(object):
                  log_file=None, data_file=None, verbose=False, random_seed=None,
                  available_gpus=[],bi_objective=False, save_name=None,
                  ref_time=3000.0, ref_loss=3.0, hvi_alpha=0.1, ignore_gpu=[],
-                 eval_epochs=1, data_augmentation=False, use_validation=False):
+                 **obj_func_params):
         """
         parameter
         ---------
@@ -130,8 +130,8 @@ class mipego(object):
             ignore_gpus: list
                 list of GPU's that should not be used
 
-            eval_epochs=1,data_augmentation=False,use_validation=False  -- seem to be variables for the objective function
-            TODO: make a nicer way to define them.
+            obj_func_params: dictionary
+                additional variables to be passed to the objective function
 
         """
         self.verbose = verbose
@@ -162,9 +162,7 @@ class mipego(object):
         self.surr_loss_fit_hist = []
         self.surr_loss_mies_hist = []
         self.time_between_gpu_hist = []#time in gpuworker() that a network is not trained on a gpu
-        self.eval_epochs = eval_epochs
-        self.data_augmentation = data_augmentation
-        self.use_validation = use_validation
+        self.obj_func_params = obj_func_params;
         
         self.bi = bi_objective 
         self.hvi_alpha = hvi_alpha # allows variable lower confidence interval
@@ -322,9 +320,7 @@ class mipego(object):
         #ans = [self.obj_func(x.to_dict(), gpu_no=gpu) for i in range(runs)]
         gpu_patch = gpu
         while True:
-            
-            #Todo wrap the optional variables in such a way that simple functions can also be used (with only dictionary)
-            ans = self.obj_func(x.to_dict(), gpu_no=gpu_patch, eval_epochs=self.eval_epochs, save_name=self.save_name, data_augmentation=self.data_augmentation, use_validation=self.use_validation)
+            ans = self.obj_func(x.to_dict(), gpu_no=gpu_patch, **self.obj_func_params)
             
 
             time_ans,loss_ans,success= ans[0],ans[1],ans[2]
@@ -368,9 +364,8 @@ class mipego(object):
         time_ = x.time
         loss_ = x.loss
         n_eval = x.n_eval
-        gpu = 1 #TODO remove this, this is a bogus value to shut up an error
 
-        ans = self.obj_func(x.to_dict(), gpu_no=gpu,eval_epochs=self.eval_epochs,save_name=self.save_name,data_augmentation=self.data_augmentation,use_validation=self.use_validation)
+        ans = self.obj_func(x.to_dict(), **self.obj_func_params)
         time_ans,loss_ans,success = ans[0],ans[1],ans[2]
         
         time = np.sum(time_ans)

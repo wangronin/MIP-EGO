@@ -20,6 +20,20 @@ The P in MiP-EGO stands for parallel, as this implementation has the additional 
 For example, one use case would be to optimize an expensive (in time) simulation. There are four simulation licenses, so four simulations can be run at the same time. With MiP-EGO, all these four licenses can be fully utilized, speeding up the optimization procedure. Using a novel infill-criteria, the Moment Generating Function Based criterium, multiple points can be selected as candidate solutions. See the following paper for more detail about this criterium:  
 WANG, Hao, et al. *A new acquisition function for Bayesian optimization based on the moment-generating function.* In: Systems, Man, and Cybernetics (SMC), 2017 IEEE International Conference on. IEEE, 2017. p. 507-512.
 
+#### Citation
+
+    @INPROCEEDINGS{8851720, 
+        author={B. v. {Stein} and H. {Wang} and T. {Bäck}}, 
+        booktitle={2019 International Joint Conference on Neural Networks (IJCNN)}, 
+        title={Automatic Configuration of Deep Neural Networks with Parallel Efficient Global Optimization}, 
+        year={2019}, 
+        pages={1-7}, 
+        keywords={convolutional neural nets;learning (artificial intelligence);neural net architecture;convolutional neural network architectures;deep neural network design;automatic configuration;deep neural networks;artificial neural network;image classification tasks;mixed integer parallel efficient global optimization algorithm;Machine-to-machine communications;Neural networks;Optimization;Deep Learning;Network Architectures;Bayesian Optimization;Optimization}, 
+        doi={10.1109/IJCNN.2019.8851720}, 
+        ISSN={2161-4393}, 
+        month={July}
+    }
+
 
 #### Async Parallel Optimization of Neural Network Architectures
 
