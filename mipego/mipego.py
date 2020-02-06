@@ -69,12 +69,12 @@ class mipego(object):
     Generic Bayesian optimization algorithm
     """
     def __init__(self, search_space, obj_func, surrogate, second_surrogate=None, ftarget=None,
-                 minimize=True, noisy=False, max_eval=None, max_iter=None, 
+                 minimize=True, noisy=False, max_eval=None, 
                  infill='MGFI', t0=2, tf=1e-1, schedule=None,
                  n_init_sample=None, n_point=1, n_job=1, backend='multiprocessing',
                  n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
                  log_file=None, data_file=None, verbose=False, random_seed=None,
-                 available_gpus=[],bi_objective=False, save_name=None,
+                 available_gpus=[],bi_objective=False,
                  ref_time=3000.0, ref_loss=3.0, hvi_alpha=0.1, ignore_gpu=[],
                  **obj_func_params):
         """
@@ -91,8 +91,6 @@ class mipego(object):
                 is the objective stochastic or not?
             max_eval : int,
                 maximal number of evaluations on the objective function
-            max_iter : int,
-                maximal iteration
             infill: string
                 infill criterion used in optimization
                 For bi-objective this should be set to HVI (hyper-volume indicator)
@@ -119,8 +117,6 @@ class mipego(object):
                 one dimensional array of GPU numbers to use for running on GPUs in parallel. Defaults to no gpus.
             bi_objective: boolean:
                 False means one objective optimization (one surrogate), True: two-objective problem (two surrogates)
-            save_name: string
-                Additional log files in json format
             ref_time: float
                 reference value for the second objective (only used in bi-objective optimization)
             ref_loss: float
@@ -154,6 +150,7 @@ class mipego(object):
         self.ftarget = ftarget 
         self.infill = infill
         self.minimize = minimize
+        self.max_iter = np.inf
         self.dim = len(self._space)
         self._best = min if self.minimize else max
         self.ignore_gpu = ignore_gpu
@@ -180,8 +177,7 @@ class mipego(object):
         # TODO: for noisy objective function, maybe increase the initial evaluations
         self.init_n_eval = 1      
         self.max_eval = int(max_eval) if max_eval else np.inf
-        self.max_iter = int(max_iter) if max_iter else np.inf
-        self.n_left = int(max_iter) if max_iter else np.inf # counts number of iterations left
+        self.n_left = int(max_eval) if max_eval else np.inf # counts number of iterations left
         self.n_init_sample = self.dim * 20 if n_init_sample is None else int(n_init_sample)
         self_eval_hist = [] #TODO remove this and make it work
         self.eval_hist_time = [] # added time and loss history
@@ -189,7 +185,6 @@ class mipego(object):
         self.eval_hist_id = []
         self.iter_count = 0
         self.eval_count = 0
-        self.save_name = save_name
         self.ref_time = ref_time
         self.ref_loss = ref_loss
         
@@ -202,7 +197,7 @@ class mipego(object):
             
             # TODO: find a nicer way to integrate this part
             # cooling down to 1e-1
-            max_iter = self.max_eval - self.n_init_sample #TODO why is this here? max_iter is now infinite, while schedule is None, so if statement below does nothing (for current settings)
+            max_iter = self.max_eval - self.n_init_sample 
             if self.schedule == 'exp':                         # exponential
                 self.alpha = (self.tf / t0) ** (1. / max_iter) 
             elif self.schedule == 'linear':
@@ -247,12 +242,6 @@ class mipego(object):
         self.init_gpus = True
         self.evaluation_queue = queue.Queue()
         
-        #initialize evaluation training history file
-        if (self.save_name != None):
-            with open(self.save_name + '_eval_train_hist.json', 'w') as f:
-                f.write('')
-            with open(self.save_name + '_thread_log.json', 'w') as f:
-                f.write('')
     
     def _get_logger(self, logfile):
         """
@@ -305,15 +294,9 @@ class mipego(object):
         """
         evaluate one solution
         """
-        if (self.save_name != None):
-            with open(self.save_name + '_thread_log.json', 'a') as outfile:
-                outfile.write('thread ' + str(gpu) + ': step 3 gpu 1\n')
+
         # TODO: sometimes the obj_func take a dictionary as input...
         time_,loss_, n_eval = x.time,x.loss, x.n_eval
-
-        if (self.save_name != None):
-            with open(self.save_name + '_thread_log.json', 'a') as outfile:
-                outfile.write('thread ' + str(gpu) + ': step 3 gpu 2\n')
         # try:
             # ans = [self.obj_func(x.tolist()) for i in range(runs)]
         # except:
@@ -550,8 +533,8 @@ class mipego(object):
         
         # TODO: postpone the evaluate to intensify...
         self.evaluate(X, runs=self.init_n_eval)
-        print("n_left,max_iter:")
-        print(self.n_left,self.max_iter)
+        print("n_left")
+        print(self.n_left)
         self.data += X
         # after evaluate run S-metric on all solutions to determine fitness
         for i in range(len(self.data)):# this is a bottleneck
@@ -683,8 +666,6 @@ class mipego(object):
                 
             else:
                 break
-            if (self.save_name != None):
-                self.save_data(self.save_name + '_intermediate')# save data
             stop_timer_2 = time.time()
             self.time_between_gpu_hist.append((stop_timer_1 - start_timer_1)+(stop_timer_2-start_timer_2))
 
@@ -800,8 +781,6 @@ class mipego(object):
                 thread.join()
 
             print('\n\n All threads should now be done. Finishing program...\n\n')
-            if (self.save_name != None):
-                self.save_data(self.save_name)#save data
 
             self.stop_dict['n_eval'] = self.eval_count
             self.stop_dict['n_iter'] = self.iter_count
@@ -812,8 +791,6 @@ class mipego(object):
 
             while not self.check_stop():
                 self.step()
-                if (self.save_name != None):
-                    self.save_data(self.save_name)#save data
 
             self.stop_dict['n_eval'] = self.eval_count
             self.stop_dict['n_iter'] = self.iter_count
