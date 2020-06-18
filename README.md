@@ -9,6 +9,20 @@
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-orange.svg)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
+## Citation
+
+You can find our paper on [IEEE Explore](https://ieeexplore.ieee.org/abstract/document/8851720/) and on [Arxiv](https://arxiv.org/abs/1810.05526).  
+When using MiP-EGO for your research, please cite us as follows:
+
+    @inproceedings{van2019automatic,
+      title={Automatic Configuration of Deep Neural Networks with Parallel Efficient Global Optimization},
+      author={van Stein, Bas and Wang, Hao and B{\"a}ck, Thomas},
+      booktitle={2019 International Joint Conference on Neural Networks (IJCNN)},
+      pages={1--7},
+      year={2019},
+      organization={IEEE}
+    }
+
 ## Overview
 
 **MiP-EGO** *(Mixed integer, Parallel - Efficient Global Optimization)* is an optimization package that can be used to optimize Mixed integer optimization problems. A mixed-integer problem is one where some of the decision variables are constrained to be integer values or categorical values.  
