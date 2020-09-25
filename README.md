@@ -1,19 +1,21 @@
 <p align="center"><img width=12.5% src="https://github.com/wangronin/MIP-EGO/blob/master/media/logo.png"></p>
 <p align="center"><img width=60% src="https://github.com/wangronin/MIP-EGO/blob/master/media/textlogo.png"></p>
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-![Python](https://img.shields.io/pypi/pyversions/mipego.svg)
+<!-- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -->
+<!-- ![Python](https://img.shields.io/pypi/pyversions/mipego.svg)
 ![Python](https://img.shields.io/pypi/status/mipego.svg)
 ![Dependencies](https://img.shields.io/badge/dependencies-up%20to%20date-brightgreen.svg)
 [![GitHub Issues](https://img.shields.io/github/issues/wangronin/MIP-EGO.svg)](https://github.com/wangronin/MIP-EGO/issues)
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-orange.svg)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT) -->
 
-# Mixed-Integer Parallel Efficient Global Optimization Library
+# Mixed-Integer Parallel Efficient Global Optimization
 
 A `Python` implementation of the Efficient Global Optimization (EGO) / Bayesian Optimization (BO) algorithm for decision spaces composed of either real, integer, catergorical variables, or a mixture thereof.
 
-![](assets/BO-example.gif)
+Underpinned by surrogate models, this algorithm iteratively proposes candidate solutions using the so-called **acquisition function** which balances exploration with exploitation, and updates the surrogate model with newly observed objective values.
+
+![](media/BO-example.gif)
 
 The project is structured as follows:
 
