@@ -174,3 +174,12 @@ When using MiP-EGO for your research, please cite us as follows:
 * [WEB18] Hao Wang, Michael Emmerich, and Thomas Bäck. "Cooling Strategies for the Moment-Generating Function in Bayesian Global Optimization". In _2018 IEEE Congress on Evolutionary Computation_, CEC 2018, Rio de Janeiro, Brazil, July 8-13, 2018, pages 1–8. IEEE, 2018.
 * [WEB19] Hao, Wang, Michael Emmerich, and Thomas Bäck. "Towards self-adaptive efficient global optimization". In _AIP Conference Proceedings_, vol. 2070, no. 1, p. 020056. AIP Publishing LLC, 2019.
 * [RaponiWBBD20] Elena Raponi, Hao Wang, Mariusz Bujny, Simonetta Boria, and Carola Doerr: "High Dimensional Bayesian Optimization Assisted by Principal Component Analysis". In _International Conference on Parallel Problem Solving from Nature_, pp. 169-183. Springer, Cham, 2020.
+
+<!-- MiP-EGO (Mixed integer, Parallel - Efficient Global Optimization) is an optimization package that can be used to optimize Mixed integer optimization problems. A mixed-integer problem is one where some of the decision variables are constrained to be integer values or categorical values.
+Next to the classical mixed integer problems, Algorithm selection or algorithm parameter optimization can also be seen as a complex mixed-integer problem.
+
+The advantage of MiP-EGO is that it uses a surrogate model (the EGO part) to learn from the evaluations it has made so far. Instead of Gaussian Process Regression like in standard EGO, the MiP-EGO uses Random Forests instead, since Random Forests can handle mixed integer data by default.
+The P in MiP-EGO stands for parallel, as this implementation has the additional feature that it can evaluate several solutions in parallel, which is extremely handy when an evaluation takes a long time and several machines are available.
+
+For example, one use case would be to optimize an expensive (in time) simulation. There are four simulation licenses, so four simulations can be run at the same time. With MiP-EGO, all these four licenses can be fully utilized, speeding up the optimization procedure. Using a novel infill-criteria, the Moment Generating Function Based criterium, multiple points can be selected as candidate solutions. See the following paper for more detail about this criterium:
+WANG, Hao, et al. A new acquisition function for Bayesian optimization based on the moment-generating function. In: Systems, Man, and Cybernetics (SMC), 2017 IEEE International Conference on. IEEE, 2017. p. 507-512. -->
