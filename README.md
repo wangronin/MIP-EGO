@@ -37,7 +37,7 @@ WANG, Hao, et al. *A new acquisition function for Bayesian optimization based on
 
 #### Async Parallel Optimization of Neural Network Architectures
 
-MiP-EGO also supports asynchronous parallel optimization, currently this feature is in *Beta* and being used to optimize the architecture and parameters of deep neural networks. See Example 2 for more details.
+MiP-EGO also supports asynchronous parallel optimization to optimize the architecture and parameters of deep neural networks. See Example 2 for more details.
 
 
 ## Install
@@ -58,7 +58,7 @@ import numpy as np
 
 #import our package, the surrogate model and the search space classes
 from mipego import mipego
-from mipego.surrogate import RandomForest
+from mipego.Surrogate import RandomForest
 from mipego.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
 
 # The "black-box" objective function
@@ -89,11 +89,9 @@ model = RandomForest(levels=search_space.levels)
 opt = mipego(search_space, obj_func, model, 
                  minimize=True,     #the problem is a minimization problem.
                  max_eval=500,      #we evaluate maximum 500 times
-                 max_iter=500,      #we have max 500 iterations
                  infill='EI',       #Expected improvement as criteria
                  n_init_sample=10,  #We start with 10 initial samples
-                 n_point=1,         #We evaluate every iteration 1 time
-                 n_job=1,           #  with 1 process (job).
+                 n_job=1,         #We evaluate 1 sample using 1 process.
                  optimizer='MIES',  #We use the MIES internal optimizer.
                  verbose=False, random_seed=None)
 
@@ -192,9 +190,9 @@ model = RandomForest(levels=search_space.levels)
 
 #now define the optimizer.
 opt = mipego(search_space, objective, model, 
-                 minimize=True, max_eval=None, max_iter=500, 
+                 minimize=True, max_eval=500,
                  infill='MGFI', n_init_sample=10, 
-                 n_point=4, n_job=4, 
+                 n_job=4, 
                  #4 GPU's, all evaluating 1 point at a time.
                  wait_iter=3, optimizer='MIES', 
                  verbose=False, random_seed=None,
