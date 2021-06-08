@@ -59,9 +59,9 @@ class mipego(object):
     Generic Bayesian optimization algorithm
     """
     def __init__(self, search_space, obj_func, surrogate, ftarget=None,
-                 minimize=True, noisy=False, max_eval=None, max_iter=None, 
+                 minimize=True, noisy=False, max_eval=None, 
                  infill='EI', t0=2, tf=1e-1, schedule=None,
-                 n_init_sample=None, n_point=1, n_job=1, backend='multiprocessing',
+                 n_init_sample=None, n_job=1, backend='multiprocessing',
                  n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
                  log_file=None, data_file=None, verbose=False, random_seed=None,
                  available_gpus=[]):
@@ -78,23 +78,27 @@ class mipego(object):
                 is the objective stochastic or not?
             max_eval : int,
                 maximal number of evaluations on the objective function
-            max_iter : int,
-                maximal iteration
             n_init_sample : int,
                 the size of inital Design of Experiment (DoE),
                 default: 20 * dim
-            n_point : int,
-                the number of candidate solutions proposed using infill-criteria,
-                default : 1
             n_job : int,
-                the number of jobs scheduled for parallelizing the evaluation. 
-                Only Effective when n_point > 1 
+                the number of jobs scheduled for parallelizing the evaluation. (number of evaluations in paralel)
             backend : str, 
                 the parallelization backend, supporting: 'multiprocessing', 'MPI', 'SPARC'
+            n_restart: int,
+                Number of times the MIES can restart.
+            max_infill_eval: int,
+                Maximum times the infill criterion can be used per iteration.
+            wait_iter: int,
+                maximal restarts when optimal value does not change
             optimizer: str,
                 the optimization algorithm for infill-criteria,
                 supported options: 'MIES' (Mixed-Integer Evolution Strategy), 
                                    'BFGS' (quasi-Newtion for GPR)
+            verbose: boolean,
+                Additional prints when on.
+            random_seed: int,
+                random seed for reproducability.
             available_gpus: array:
                 one dimensional array of GPU numbers to use for running on GPUs in parallel. Defaults to no gpus.
 
@@ -108,8 +112,8 @@ class mipego(object):
         self.noisy = noisy
         self.surrogate = surrogate
         self.async_surrogates = {}
-        self.n_point = n_point
-        self.n_jobs = min(self.n_point, n_job)
+        self.n_point = n_job
+        self.n_jobs = n_job
         self.available_gpus = available_gpus
         self._parallel_backend = backend
         self.ftarget = ftarget 
@@ -131,8 +135,8 @@ class mipego(object):
         # TODO: for noisy objective function, maybe increase the initial evaluations
         self.init_n_eval = 1      
         self.max_eval = int(max_eval) if max_eval else np.inf
-        self.max_iter = int(max_iter) if max_iter else np.inf
         self.n_init_sample = self.dim * 20 if n_init_sample is None else int(n_init_sample)
+        self.max_iter = self.max_eval - self.n_init_sample
         self.eval_hist = []
         self.eval_hist_id = []
         self.iter_count = 0
@@ -317,9 +321,15 @@ class mipego(object):
                 fitness = np.array([s.fitness for s in self.data])
 
                 # normalization the response for numerical stability
-                # e.g., for MGF-based acquisition function
-                _min, _max = np.min(fitness), np.max(fitness)
-                fitness_scaled = (fitness - _min) / (_max - _min)
+                # e.g., for MGF-based acquisition function\
+                if len(fitness) == 1: # for the case n_init_sample=1
+                    fitness_scaled = fitness
+                else:
+                    _min, _max = np.min(fitness), np.max(fitness)
+                    if not _min == _max: # for the case of flat fitness                    
+                        fitness_scaled = (fitness - _min) / (_max - _min)
+                    else:
+                        fitness_scaled = fitness
 
                 # fit the surrogate model
                 if (surrogate is None):

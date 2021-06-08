@@ -15,7 +15,7 @@ from numpy import std, array, atleast_2d
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.utils.validation import check_is_fitted
-from sklearn.ensemble.base import _partition_estimators
+from sklearn.ensemble._base import _partition_estimators
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 from sklearn.metrics import r2_score
 
@@ -51,7 +51,7 @@ class RandomForest(RandomForestRegressor):
             _max = max(self._n_values)
             data = atleast_2d([list(range(n)) * (_max // n) + \
                 list(range(_max % n)) for n in self._n_values]).T
-            self._enc = OneHotEncoder(n_values=self._n_values, sparse=False)
+            self._enc = OneHotEncoder(sparse=False)
             self._enc.fit(data)
             # TODO: using such encoding, feature number will increase drastically
             # TODO: investigate the upper bound (in the sense of cpu time)
