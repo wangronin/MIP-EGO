@@ -1,13 +1,26 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov 13 20:45:21 2015
+import os, logging
 
-@author: wangronin
-"""
+from . import InfillCriteria, Surrogate
+from .BayesOpt import BO, ParallelBO, NoisyBO, AnnealingBO
+from .Solution import Solution
+from .Surrogate import RandomForest
+from .SearchSpace import SearchSpace, ContinuousSpace, OrdinalSpace, NominalSpace
+from .Extension import OptimizerPipeline
 
-from .mipego import mipego
-from . import InfillCriteria
-from . import Surrogate
-from . import SearchSpace
+__all__ = [
+    'BO', 'ParallelBO', 'NoisyBO', 'AnnealingBO', 'Solution',
+    'InfillCriteria', 'Surrogate', 'SearchSpace', 'OrdinalSpace', 'ContinuousSpace', 
+    'NominalSpace', 'RandomForest', 'OptimizerPipeline'
+]
 
-__all__ = ['mipego', 'InfillCriteria', 'Surrogate', 'SearchSpace']
+# To use `dill` for the pickling, which works for
+# much more python objects
+os.environ['LOKY_PICKLER'] = 'dill' 
+
+verbose = {
+    False : logging.NOTSET,
+    'DEBUG' : logging.DEBUG,
+    'INFO' : logging.INFO
+}
+
+# TODO: add an interface function `fmin`
