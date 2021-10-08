@@ -16,6 +16,7 @@ from copy import copy
 from joblib import Parallel, delayed
 
 from . import InfillCriteria
+from . import BiObjective
 from .base import baseBO
 from .Solution import Solution
 from .SearchSpace import SearchSpace
@@ -99,6 +100,26 @@ class ParallelBO(BO):
             __ = [list(self._argmax_restart(_, logger=self._logger)) for _ in criteria]
         
         return tuple(zip(*__))
+
+
+class BiObjectiveBO(ParallelBO):
+    def __init__(self, model2=None, ref_obj1=0, ref_obj2=0, *argv, **kwargs):
+        super().__init__(*argv, **kwargs)
+        self.model2 = model2
+        self.ref_obj1 = ref_obj1
+        self.ref_obj2 = ref_obj2
+        
+        if self._acquisition_fun == 'HVI':
+            self._par_name = 'alpha'
+            # Logit-normal distribution for `alpha` supported on [0, 1]
+            self._sampler = lambda x: 1 / (1 + np.exp((x['alpha'] * 4 - 2) \
+                + 0.6 * np.random.randn())) 
+        else:
+            raise NotImplementedError
+        _criterion = getattr(InfillCriteria, self._acquisition_fun)()
+        if self._par_name not in self._acquisition_par:
+            self._acquisition_par[self._par_name] = getattr(_criterion, self._par_name)
+        
 
 class AnnealingBO(ParallelBO):
     def __init__(self, t0=2, tf=1e-1, schedule='exp', *argv, **kwargs):

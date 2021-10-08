@@ -6,11 +6,12 @@ from .Solution import Solution
 from .Surrogate import RandomForest
 from .SearchSpace import SearchSpace, ContinuousSpace, OrdinalSpace, NominalSpace
 from .Extension import OptimizerPipeline
+from . import Bi_Objective
 
 __all__ = [
     'BO', 'ParallelBO', 'NoisyBO', 'AnnealingBO', 'Solution',
     'InfillCriteria', 'Surrogate', 'SearchSpace', 'OrdinalSpace', 'ContinuousSpace', 
-    'NominalSpace', 'RandomForest', 'OptimizerPipeline'
+    'NominalSpace', 'RandomForest', 'OptimizerPipeline', 'Bi_Objective'
 ]
 
 # To use `dill` for the pickling, which works for

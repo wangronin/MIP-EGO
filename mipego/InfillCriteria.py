@@ -9,6 +9,7 @@ import numpy as np
 from numpy import sqrt, exp, pi
 from scipy.stats import norm
 from abc import ABC, abstractmethod
+from .BiObjective import s_metric, pareto
 
 # TODO: implement noisy handling infill criteria, e.g., EQI (expected quantile improvement)
 # TODO: perphaps also enable acquisition function engineering here?
@@ -71,6 +72,80 @@ class ImprovementBased(InfillCriteria):
                 self._plugin = None
         else:
             self._plugin = plugin if self.minimize else -1.0 * plugin
+
+#HVI, using two surrogate models and lower confidence bound
+class HVI(InfillCriteria):
+    """
+    Hyper Volume Improvement
+    """
+    def __init__(self, model=None, model2=None, plugin=None, minimize=True, solutions=None, n_left=None, max_iter=None, sol=None,ref_obj1=None,ref_obj2=None):
+        assert hasattr(model, 'predict')
+        assert hasattr(model2, 'predict')
+        self.time_model = model
+        self.loss_model = model2
+        self.minimize = minimize
+        self.alpha = 0.1 + 0.8*(n_left/max_iter) #variable alpha for Lower Confidence Bound
+        self.solutions = solutions
+        self.n_left = n_left
+        self.max_iter = max_iter
+        self.Solution = sol
+        self.par = pareto(self.solutions)
+        self.ref_time = ref_obj1
+        self.ref_loss = ref_obj2
+        # change maximization problem to minimization
+        self.plugin = plugin if self.minimize else -plugin
+        if not self.minimize:
+            print("Warning: HVI might not work correctly for maximization")#TODO make shure this does work for maximization
+        if self.plugin is None:
+            #self.plugin = np.min(model.y) if minimize else -np.max(self.model.y)
+            self.plugin = np.min(model.y) + np.min(model2.y) if minimize else -np.max(self.model.y)-np.max(self.model2.y)#take the sum of mins, because we need to do something
+
+    def __call__(self, X, dx=False):
+        X = self.check_X(X)
+        y1_hat, y2_hat, sd_1, sd_2 = self._predict(X)
+        return y1_hat
+
+    def _predict(self, X):
+        y_1_hat, obj1_sd2 = self.model.predict(X, eval_MSE=True)
+        y_2_hat, obj2_sd2 = self.model2.predict(X, eval_MSE=True)
+        if not self.minimize:
+            y_1_hat = -y_1_hat
+            y_2_hat = -y_2_hat
+        #CHRIS use y_hat and sd2 to calculate LCB of expected time and loss values, pass these to s-metric and calculate hypervolume improvement
+        y_1_hat = y_1_hat[0]
+        obj1_sd2 = obj1_sd2[0]
+        y_2_hat = y_2_hat[0]
+        obj2_sd2 = obj2_sd2[0]
+        time_sd = sqrt(obj1_sd2)
+        loss_sd = sqrt(obj2_sd2)
+        if self.alpha > 1.0 or self.alpha < 0:
+            print('error: alpha for Lower Confidence bound must be between 0.0 and 1.0')
+            exit()
+        elif self.alpha >= 0.5:
+            exp_1, _ = norm.interval(self.alpha-(1.0-self.alpha),loc=y_1_hat,scale=time_sd)#CHRIS Lower Confidence Bound
+            exp_2, _ = norm.interval(self.alpha-(1.0-self.alpha),loc=y_2_hat,scale=loss_sd)#CHRIS Lower Confidence Bound
+        else:
+            _,exp_1 = norm.interval(1.0-2.0*self.alpha,loc=y_1_hat,scale=time_sd)#CHRIS Lower Confidence Bound
+            _,exp_2 = norm.interval(1.0-2.0*self.alpha,loc=y_2_hat,scale=loss_sd)#CHRIS Lower Confidence Bound
+        expected = self.Solution(X[0])
+        expected.obj1 = exp_1
+        expected.obj2 = exp_2
+        
+        hyp_vol_imp = s_metric(expected, self.solutions, self.n_left,self.max_iter,ref_time=self.ref_time,ref_loss=self.ref_loss,par=self.par)
+        
+        return hyp_vol_imp, time_sd, loss_sd
+
+    def _gradient(self, X):
+        #CHRIS returned gradient is sum of gradient of both models
+        print("HVI gradient() is called?")
+        y_1_dx, sd2_1_dx = self.model.gradient(X)
+        y_2_dx, sd2_2_dx = self.model2.gradient(X)
+        y_dx, sd2_dx = y_1_dx + y_2_dx, sd2_1_dx + sd2_2_dx
+        if not self.minimize:
+            y_dx = -y_dx
+        return y_dx, sd2_dx
+
+
 
 class UCB(InfillCriteria):
     def __init__(self, alpha=0.5, **kwargs):
