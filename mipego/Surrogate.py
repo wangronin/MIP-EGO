@@ -93,20 +93,11 @@ class RandomForest(RandomForestRegressor):
         if levels is not None:
             assert isinstance(levels, dict)
             self._levels = levels
-            self._cat_idx = sorted(self._levels.keys())
-            self._n_values = [len(self._levels[i]) for i in self._cat_idx]
-            # encode categorical variables to integer type
-            self._le = [LabelEncoder().fit(self._levels[i]) for i in self._cat_idx]
-            # encode integers to binary
-            _max = max(self._n_values)
-            data = atleast_2d([list(range(n)) * (_max // n) + \
-                list(range(_max % n)) for n in self._n_values]).T
-            self._enc = OneHotEncoder(sparse=False)
-            self._enc.fit(data)
-            # TODO: using such encoding, feature number will increase drastically
-            # TODO: investigate the upper bound (in the sense of cpu time)
-            # for categorical levels/variable number
-            # in the future, maybe implement binary/multi-value split
+            self._cat_idx = list(self._levels.keys())
+            self._categories = [list(l) for l in self._levels.values()]
+
+            # encode categorical variables to binary values
+            self._enc = OneHotEncoder(categories=self._categories, sparse=False)
 
     def _check_X(self, X):
         X_ = array(X, dtype=object)

@@ -581,7 +581,10 @@ class baseBO(ABC):
             
             if len(self._logger.handlers) > 1:
                 _ = [h for h in self._logger.handlers if isinstance(h, logging.FileHandler)]
-                _logger = _[0].baseFilename
+                if (len(_) > 0):
+                    _logger = _[0].baseFilename
+                else:
+                    _logger = None
             else: 
                 _logger = None
                         
