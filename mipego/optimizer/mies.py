@@ -65,7 +65,7 @@ class MIES(object):
         # unpack interval bounds
         self.bounds_r = np.asarray([self._space.bounds[_] for _ in self.id_r])
         self.bounds_i = np.asarray([self._space.bounds[_] for _ in self.id_i])
-        self.bounds_d = np.asarray([self._space.bounds[_] for _ in self.id_d])
+        self.bounds_d = np.asarray([self._space.bounds[_] for _ in self.id_d], dtype=object)
         self._check_bounds(self.bounds_r)
         self._check_bounds(self.bounds_i)
         

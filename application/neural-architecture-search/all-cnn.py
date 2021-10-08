@@ -18,7 +18,7 @@ import keras.backend as K
 import math
 from keras.callbacks import LearningRateScheduler
 from keras.regularizers import l2
-
+import gputil as gp
 
 def CNN_conf(cfg):
     verbose = 0
@@ -175,8 +175,11 @@ if len(sys.argv) > 2 and sys.argv[1] == '--cfg':
     cfg = eval(sys.argv[2])
     if len(sys.argv) > 3:
         gpu = sys.argv[3]
+    else: 
+        available_gpus = gp.getAvailable(limit=16)
+        gpu = available_gpus[0]
         
-        os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-        os.environ["CUDA_VISIBLE_DEVICES"]=str(gpu)
+    os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+    os.environ["CUDA_VISIBLE_DEVICES"]=str(gpu)
     print(CNN_conf(cfg))
     K.clear_session()
