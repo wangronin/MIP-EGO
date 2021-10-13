@@ -13,8 +13,8 @@ from subprocess import STDOUT, check_output
 import numpy as np
 import time
 
-import gputil as gp
-from mipego import mipego
+
+from mipego import ParallelBO
 from mipego.Surrogate import RandomForest
 from mipego.SearchSpace import ContinuousSpace, NominalSpace, OrdinalSpace
 import re
@@ -88,22 +88,17 @@ global_pooling = NominalSpace([True, False], "global_pooling")  # global_pooling
 drop_out = ContinuousSpace([1e-5, .9], 'dropout') * 4        # drop_out rate
 lr_rate = ContinuousSpace([1e-4, 1.0e-0], 'lr')        # learning rate
 l2_regularizer = ContinuousSpace([1e-5, 1e-2], 'l2')# l2_regularizer
-search_space =  stack_sizes * strides * filters *  kernel_size * activation * activation_dense * drop_out * lr_rate * l2_regularizer * step * global_pooling 
+search_space =  stack_sizes + strides + filters + kernel_size + activation + activation_dense + drop_out + lr_rate + l2_regularizer + step + global_pooling 
 
 
 print('starting program...')    
-available_gpus = gp.getAvailable(limit=16)
-print(available_gpus)
+
 
 
 # use random forest as the surrogate model 
 model = RandomForest(levels=search_space.levels)
-opt = mipego(search_space, objective, model, ftarget=None,
-                 minimize=True, noisy=False, max_eval=None, max_iter=n_step, 
-                 infill='EI', n_init_sample=10, n_point=3, n_job=3, 
-                 n_restart=None, max_infill_eval=None, wait_iter=3, optimizer='MIES', 
-                 log_file=None, data_file=None, verbose=False, random_seed=None,
-                 available_gpus=available_gpus)
+opt = ParallelBO(search_space=search_space, obj_fun=objective, model=model, eval_type='dict',
+                DoE_size=10, n_point=3, n_job=3, acquisition_fun='MFGI', max_FEs=20)
 
 
 

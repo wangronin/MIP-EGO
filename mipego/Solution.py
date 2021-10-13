@@ -247,11 +247,18 @@ class Solution(np.ndarray):
                     } for i, _index in enumerate(self.index)
                 } 
             else:
-                res = [
-                    {
-                        self.var_name[k] : obj[i, k] for k in range(self.dim)
-                    } for i, _index in enumerate(self.index)
-                ]
+                if (np.isscalar(self.index)):
+                    res = [
+                        {
+                            self.var_name[k] : obj[i, k] for k in range(self.dim)
+                        } for i, _index in enumerate([self.index])
+                    ]
+                else :
+                    res = [
+                        {
+                            self.var_name[k] : obj[i, k] for k in range(self.dim)
+                        } for i, _index in enumerate(self.index)
+                    ]
                 # if len(res) == 1:
                 #     res = res[0]
         elif orient == 'var':
