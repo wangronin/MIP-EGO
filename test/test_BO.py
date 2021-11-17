@@ -4,13 +4,14 @@ from mipego import ParallelBO, BO, ContinuousSpace, OrdinalSpace, \
     NominalSpace, RandomForest
 from mipego.Extension import MultiAcquisitionBO
 from mipego.GaussianProcess import GaussianProcess
+from mipego.GaussianProcess import AutoencoderGaussianProcess
 from mipego.GaussianProcess.trend import constant_trend
 
 np.random.seed(123)
 
 import unittest
 
-class TestBO(unittest.TestCase):
+class TestBO(unittest.TxestCase):
 
     def test_pickling(self):
         dim = 5
@@ -155,6 +156,39 @@ class TestBO(unittest.TestCase):
             acquisition_par={'t' : 2},
             n_job=3,       # number of processes
             n_point=3,     # number of the candidate solution proposed in each iteration
+            verbose=True   # turn this off, if you prefer no output
+        )
+        xopt, fopt, stop_dict = opt.run()
+
+        print('xopt: {}'.format(xopt))
+        print('fopt: {}'.format(fopt))
+        print('stop criteria: {}'.format(stop_dict))
+
+    def test_mix_space_autoencoder(self):
+        dim_r = 2  # dimension of the real values
+        def obj_fun(x):
+            x_r = np.array([x['continuous_%d'%i] for i in range(dim_r)])
+            x_i = x['ordinal']
+            x_d = x['nominal']
+            _ = 0 if x_d == 'OK' else 1
+            return np.sum(x_r ** 2) + abs(x_i - 10) / 123. + _ * 2
+
+        search_space = ContinuousSpace([-5, 5], var_name='continuous') * dim_r + \
+            OrdinalSpace([5, 15], var_name='ordinal') + \
+            NominalSpace(['OK', 'A', 'B', 'C', 'D', 'E', 'F', 'G'], var_name='nominal')
+
+        model = AutoencoderGaussianProcess(levels=search_space.levels)
+        model.train_encoder(search_space)
+
+        opt = BO(
+            search_space=search_space, 
+            obj_fun=obj_fun, 
+            model=model, 
+            max_FEs=9, 
+            DoE_size=3,    # the initial DoE size
+            eval_type='dict',
+            acquisition_fun='MGFI',
+            acquisition_par={'t' : 2},
             verbose=True   # turn this off, if you prefer no output
         )
         xopt, fopt, stop_dict = opt.run()
