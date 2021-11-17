@@ -11,7 +11,7 @@ Autoencoder based gaussian process regressor.
 import numpy as np
 from numpy import std, array, atleast_2d
 from sklearn.utils.validation import check_is_fitted
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
 from .gpr import GaussianProcess
 import keras
 from keras import layers
@@ -61,7 +61,7 @@ class AutoencoderGaussianProcess(GaussianProcess):
         os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"]=gpu 
 
-        lb, ub = -1, 1
+        lb, ub = 0, 1
         mean = constant_trend(encoding_dim, beta=None)
         thetaL = 1e-10 * (ub - lb) * np.ones(encoding_dim)
         thetaU = 10 * (ub - lb) * np.ones(encoding_dim)
@@ -69,13 +69,13 @@ class AutoencoderGaussianProcess(GaussianProcess):
         
         # initialize the base GaussianProcess model using preset settings for the autoencoder output
         super(AutoencoderGaussianProcess, self).__init__(mean=mean, 
-            corr='squared_exponential',
+            corr='matern',
             theta0=theta0, 
             thetaL=thetaL, 
             thetaU=thetaU,
             nugget=0, 
             noise_estim=False,
-            optimizer='BFGS', 
+            optimizer='CMA', 
             wait_iter=3, 
             random_start=encoding_dim,
             likelihood='concentrated', 
@@ -126,12 +126,12 @@ class AutoencoderGaussianProcess(GaussianProcess):
         """Build a simple AutoEncoder dense network to get a latent space."""
         input_layer = keras.Input(shape=shape[1])
         # "encoded" is the encoded representation of the input
-        #encoded = layers.Dense(self.encoding_dim*2, activation='relu', activity_regularizer=regularizers.l1(10e-5))(input_layer)
-        encoded = layers.Dense(self.encoding_dim, activation='relu')(input_layer)
+        encoded = layers.Dense(self.encoding_dim*2, activation='relu', activity_regularizer=regularizers.l1(10e-5))(input_layer)
+        encoded = layers.Dense(self.encoding_dim, activation='relu')(encoded)
 
         # "decoded" is the lossy reconstruction of the input
-        #decoded = layers.Dense(self.encoding_dim*2, activation='relu')(encoded)
-        decoded = layers.Dense(shape[1], activation='sigmoid')(encoded)
+        decoded = layers.Dense(self.encoding_dim*2, activation='relu')(encoded)
+        decoded = layers.Dense(shape[1], activation='sigmoid')(decoded)
 
         # This model maps an input to its reconstruction
         self.autoencoder = keras.Model(input_layer, decoded)
@@ -146,6 +146,10 @@ class AutoencoderGaussianProcess(GaussianProcess):
         self._logger.info("Sampling the search space")
         data = search_space.sampling(sample_size, method='LHS')
         data = self._check_X(data)
+        #normalize the data
+        self.scaler = MinMaxScaler().fit(data)
+        data = self.scaler.transform(data)
+
         self._logger.info(f"Fitting autoencoder with input shape {data.shape}")
         self.build_encoder(data.shape)
         self.autoencoder.fit(data, data,
@@ -170,6 +174,7 @@ class AutoencoderGaussianProcess(GaussianProcess):
         "Fit the Gaussian Process model"
         assert self.encoder is not None
         X = self._check_X(X)
+        X = self.scaler.transform(X)
         X = self.encoder.predict(X)
         y = y.ravel()
         self.y = y
@@ -189,6 +194,7 @@ class AutoencoderGaussianProcess(GaussianProcess):
         check_is_fitted(self)
         # Check data
         X = self._check_X(X)
+        X = self.scaler.transform(X)
         X = self.encoder.predict(X)
         #encode X
         return super(AutoencoderGaussianProcess, self).predict(X, **kwargs)
