@@ -15,16 +15,15 @@ from sklearn.metrics import r2_score
 
 from joblib import Parallel, delayed
 
-# TODO: implement multi-output/objetive surrogate models, better to model the c
-# orrelation among targets
 class SurrogateAggregation(object):
-    def __init__(self, surrogates, aggregation='WS', **kwargs):
+    """Linear aggregation of surrogate models used for multi-objective optimization"""
+
+    def __init__(self, surrogates, aggregation="WS", **kwargs):
         self.surrogates = surrogates
         self.N = len(self.surrogates)
         self.aggregation = aggregation
-        self.weights = np.asarray(kwargs['weights'], dtype='float').ravel()
-
-        assert self.aggregation in ['WS', 'Tchebycheff']
+        self.weights = np.asarray(kwargs["weights"], dtype="float").ravel()
+        assert self.aggregation in ["WS", "Tchebycheff"]
 
     def fit(self, X, y):
         pass
@@ -37,19 +36,19 @@ class SurrogateAggregation(object):
         else:
             y_hat_ = np.atleast_2d([_.predict(X, eval_MSE=False).ravel() for _ in self.surrogates])
 
-        if self.aggregation == 'WS':
+        if self.aggregation == "WS":
             y_hat = self.weights.dot(y_hat_)
             if eval_MSE:
-                MSE = (self.weights ** 2.).dot(MSE_)
+                MSE = (self.weights ** 2.0).dot(MSE_)
 
-        elif self.aggregation == 'Tchebycheff':
+        elif self.aggregation == "Tchebycheff":
             # TODO: implement this part
             pass
-        
+
         return (y_hat, MSE) if eval_MSE else y_hat
-    
+
     def gradient(self, X):
-        # TODO: implement
+        # TODO: this model is not differentiable?
         pass
         
 def _save_prediction(predict, X, index, out):
