@@ -11,7 +11,7 @@ Autoencoder based gaussian process regressor.
 import numpy as np
 from numpy import std, array, atleast_2d
 from sklearn.utils.validation import check_is_fitted
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
+from sklearn.preprocessing import OneHotEncoder
 from .gpr import GaussianProcess
 import keras
 from keras import layers
@@ -140,15 +140,24 @@ class AutoencoderGaussianProcess(GaussianProcess):
         self.autoencoder.compile(optimizer='adam', loss='mse')
         self._logger.info(self.autoencoder.summary())
 
+    def scale_data(self, data):
+        i = 0
+        for t in self.search_space.var_type:
+            b = self.search_space.bounds[i]
+            if (t != "N"):
+                data[:,i] = data[:,i] - b[0] / (b[1] - b[0])
+            i+=1
+        return data
+
     def train_encoder(self, search_space, epochs=50, sample_size=1000):
         "Builds the autoencoder model and trains the encoder using the search_space to generate samples"
         #get data from search_space
         self._logger.info("Sampling the search space")
         data = search_space.sampling(sample_size, method='LHS')
+        self.search_space = search_space
+        data = self.scale_data(data)
         data = self._check_X(data)
         #normalize the data
-        self.scaler = MinMaxScaler().fit(data)
-        data = self.scaler.transform(data)
 
         self._logger.info(f"Fitting autoencoder with input shape {data.shape}")
         self.build_encoder(data.shape)
@@ -173,8 +182,8 @@ class AutoencoderGaussianProcess(GaussianProcess):
     def fit(self, X, y):
         "Fit the Gaussian Process model"
         assert self.encoder is not None
+        X = self.scale_data(X)
         X = self._check_X(X)
-        X = self.scaler.transform(X)
         X = self.encoder.predict(X)
         y = y.ravel()
         self.y = y
@@ -193,8 +202,8 @@ class AutoencoderGaussianProcess(GaussianProcess):
         """
         check_is_fitted(self)
         # Check data
+        X = self.scale_data(X)
         X = self._check_X(X)
-        X = self.scaler.transform(X)
         X = self.encoder.predict(X)
         #encode X
         return super(AutoencoderGaussianProcess, self).predict(X, **kwargs)
