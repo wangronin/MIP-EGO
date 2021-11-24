@@ -57,11 +57,11 @@ MACHINE_EPSILON = np.finfo(np.double).eps
 
 class AutoencoderGaussianProcess(GaussianProcess):
 
-    def __init__(self, encoding_dim=10, encoder=None, levels=None, logger=None, gpu="0", verbose=False, **kwargs):
+    def __init__(self, encoding_dim=10, encoder=None, levels=None, logger=None, gpu="0", optimizer="CMA", verbose=False, **kwargs):
         os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"]=gpu 
 
-        lb, ub = 0, 1
+        lb, ub = -0.1, 1.1
         mean = constant_trend(encoding_dim, beta=None)
         thetaL = 1e-10 * (ub - lb) * np.ones(encoding_dim)
         thetaU = 10 * (ub - lb) * np.ones(encoding_dim)
@@ -75,7 +75,7 @@ class AutoencoderGaussianProcess(GaussianProcess):
             thetaU=thetaU,
             nugget=0, 
             noise_estim=False,
-            optimizer='CMA', 
+            optimizer=optimizer, 
             wait_iter=3, 
             random_start=encoding_dim,
             likelihood='concentrated', 
@@ -141,11 +141,17 @@ class AutoencoderGaussianProcess(GaussianProcess):
         self._logger.info(self.autoencoder.summary())
 
     def scale_data(self, data):
+        """
+        Transforms the search space data to a numpy array scaled between 0 and 1.
+        Categorical variables are one-hot encoded, and should be defined at the end
+        of the search space
+        """
+        data = self._check_X(data)
         i = 0
         for t in self.search_space.var_type:
             b = self.search_space.bounds[i]
             if (t != "N"):
-                data[:,i] = data[:,i] - b[0] / (b[1] - b[0])
+                data[:,i] = (data[:,i] - b[0]) / (b[1] - b[0])
             i+=1
         return data
 
@@ -156,7 +162,6 @@ class AutoencoderGaussianProcess(GaussianProcess):
         data = search_space.sampling(sample_size, method='LHS')
         self.search_space = search_space
         data = self.scale_data(data)
-        data = self._check_X(data)
         #normalize the data
 
         self._logger.info(f"Fitting autoencoder with input shape {data.shape}")
@@ -183,7 +188,6 @@ class AutoencoderGaussianProcess(GaussianProcess):
         "Fit the Gaussian Process model"
         assert self.encoder is not None
         X = self.scale_data(X)
-        X = self._check_X(X)
         X = self.encoder.predict(X)
         y = y.ravel()
         self.y = y
@@ -203,7 +207,6 @@ class AutoencoderGaussianProcess(GaussianProcess):
         check_is_fitted(self)
         # Check data
         X = self.scale_data(X)
-        X = self._check_X(X)
         X = self.encoder.predict(X)
         #encode X
         return super(AutoencoderGaussianProcess, self).predict(X, **kwargs)

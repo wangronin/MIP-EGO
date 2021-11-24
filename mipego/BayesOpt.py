@@ -26,7 +26,7 @@ class BO(baseBO):
         fun = fun if fun is not None else self._acquisition_fun
         if hasattr(getattr(InfillCriteria, fun), 'plugin'):
             if 'plugin' not in par:
-                par.update({'plugin': self.fmin})
+                par.update({'plugin': self.fopt})
         
         return super()._create_acquisition(fun, par, return_dx)
 
