@@ -17,11 +17,9 @@ import keras
 import numpy as np
 import torch
 from keras import layers, regularizers
-from keras.callbacks import TensorBoard
 from sklearn.preprocessing import OneHotEncoder
 
 from .gpy import PytorchGaussianProcess
-from .trend import constant_trend
 
 
 class AutoencoderGaussianProcess(PytorchGaussianProcess):

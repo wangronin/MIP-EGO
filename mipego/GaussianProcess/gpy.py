@@ -9,20 +9,12 @@ Gaussian process regressor using gpytorch.
 """
 
 import logging
-import os
 import sys
 
 import gpytorch
-import keras
 import numpy as np
 import torch
-from keras import layers, regularizers
-from keras.callbacks import TensorBoard
-from numpy import array, atleast_2d, std
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.utils.validation import check_is_fitted
-
-from .trend import constant_trend
+from numpy import array
 
 
 class LoggerFormatter(logging.Formatter):
