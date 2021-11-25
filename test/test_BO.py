@@ -4,7 +4,7 @@ from mipego import ParallelBO, BO, ContinuousSpace, OrdinalSpace, \
     NominalSpace, RandomForest
 from mipego.Extension import MultiAcquisitionBO
 from mipego.GaussianProcess import GaussianProcess
-from mipego.GaussianProcess import AutoencoderGaussianProcess, PytorchGaussianProcess
+from mipego.GaussianProcess import PytorchGaussianProcess
 from mipego.GaussianProcess.trend import constant_trend
 
 np.random.seed(123)
