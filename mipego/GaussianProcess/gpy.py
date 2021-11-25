@@ -56,6 +56,16 @@ class LoggerFormatter(logging.Formatter):
 
 MACHINE_EPSILON = np.finfo(np.double).eps
 
+class ExactGPModel(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood):
+        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+
+    def forward(self, x):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 class PytorchGaussianProcess():
 
@@ -108,17 +118,15 @@ class PytorchGaussianProcess():
             X = np.c_[np.delete(X_, self._cat_idx, 1).astype(float), X_cat]
         return X
 
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-    def fit(self, X, y, training_iter=20):
+    def fit(self, X, y, training_iter=50):
         "Fit the Gaussian Process model"
-        self.y = torch.from_numpy(y)
-        X = torch.from_numpy(X)
+        print(X)
+        print(y)
+        y = torch.from_numpy(np.array(y, dtype='float64'))
+        X = torch.from_numpy(np.array(X, dtype='float64'))
+        self.y = y
         self.training_iter = training_iter
-        self.model = gpytorch.models.ExactGP(X, y, self.likelihood)
+        self.model = ExactGPModel(X, y, self.likelihood)
         self._logger.info("Training the GPytorch exact inference model")
         self.model.train()
         self.likelihood.train()
@@ -141,22 +149,28 @@ class PytorchGaussianProcess():
             optimizer.step()
         self.is_fitted = True
 
-    def predict(self, X):
+    def predict(self, X, eval_MSE=False):
         """Predict regression target for `X`.
         Parameters
         ----------
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
         Returns
+        eval_MSE : {bool} if true also the variance is returned.
         -------
         y_mean : ndarray of shape (n_samples,) or (n_samples, n_outputs)
             The predicted mean values.
         y_variance : ndarray of shape (n_samples,) or (n_samples, n_outputs)
             The predicted variance values.
         """
-        X = torch.from_numpy(X)
+        # Get into evaluation (predictive posterior) mode
+        self.model.eval()
+        self.likelihood.eval()
+        X = torch.from_numpy(np.array(X, dtype='float64'))
         f_preds = self.model(X)
         y_preds = self.likelihood(self.model(X))
         f_mean = f_preds.mean
         f_var = f_preds.variance
         self._logger.debug(f"f_mean {f_mean} - f_var {f_var}")
-        return y_preds.mean.numpy(), y_preds.variance.numpy()
+        if eval_MSE:
+            return y_preds.mean.detach().numpy(), y_preds.variance.detach().numpy()
+        return y_preds.mean.detach().numpy()

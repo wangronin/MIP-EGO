@@ -92,7 +92,7 @@ class AutoencoderGaussianProcess(PytorchGaussianProcess):
                 shuffle=True,
                 validation_split=0.1)
 
-    def fit(self, X, y, training_iter=20):
+    def fit(self, X, y, training_iter=50):
         "Fit the Gaussian Process model"
         assert self.encoder is not None
         X = self.scale_data(X)
