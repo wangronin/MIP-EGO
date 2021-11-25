@@ -1069,8 +1069,8 @@ class GaussianProcess(BaseEstimator, RegressorMixin):
                 'sigma0': 0.25 * np.max(log10bounds[:, 1] - log10bounds[:, 0]),
                 'max_FEs': eval_budget,
                 'ftarget': np.inf,
-                'lb': log10bounds[:, 1],
-                'ub': log10bounds[:, 0]
+                'lb': log10bounds[:, 0],
+                'ub': log10bounds[:, 1]
             }
             
             # TODO: perphas use the BIPOP-CMA-ES in the future     
