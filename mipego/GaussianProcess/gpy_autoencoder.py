@@ -9,7 +9,6 @@ Autoencoder based gaussian process regressor using gpytorch.
 """
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 from sklearn.preprocessing import OneHotEncoder
 import keras
 from keras import layers
@@ -111,7 +110,6 @@ class AutoencoderGaussianProcess(PytorchGaussianProcess):
         y : ndarray of shape (n_samples,) or (n_samples, n_outputs)
             The predicted values.
         """
-        check_is_fitted(self)
         # Check data
         X = self.scale_data(X)
         X = self.encoder.predict(X)
