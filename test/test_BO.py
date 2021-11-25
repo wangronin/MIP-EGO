@@ -11,7 +11,7 @@ np.random.seed(123)
 
 import unittest
 
-class TestBO(unittest.TxestCase):
+class TestBO(unittest.TestCase):
 
     def test_pickling(self):
         dim = 5
