@@ -32,57 +32,70 @@ class baseOptimizer(ABC):
 
     @abstractmethod
     def ask(self, n_point=None):
-        """Get suggestions from the optimizer.
+        """Get suggestions from the surrogate model of the optimizer.
 
-        Parameters
-        ----------
-        n_point : int
-            Desired number of parallel suggestions in the output
+        Args:
+            n_point (int, optional): Desired number of parallel suggestions in the output. Defaults to None.
 
-        Returns
-        -------
-        next_guess : list of dict
-            List of `n_suggestions` suggestions to evaluate the objective
-            function. Each suggestion is a dictionary where each key
-            corresponds to a parameter being optimized.
+        Returns:
+            list of dict. List of `n_point` suggestions to evaluate the objective
+                function. Each suggestion is a dictionary where each key
+                corresponds to a parameter being optimized.
         """
         return
 
     @abstractmethod
     def tell(self, X, y):
-        """Feed an observation back.
+        """Feed an observation back to the surrogate model.
 
-        Parameters
-        ----------
-        X : list of dict-like
-            Places where the objective function has already been evaluated.
-            Each suggestion is a dictionary where each key corresponds to a
-            parameter being optimized.
-        y : array-like, shape (n,)
-            Corresponding values where objective has been evaluated
+        Args:
+            X (list): Places where the objective function has already been evaluated.
+                Each suggestion is a dictionary where each key corresponds to a
+                parameter being optimized.
+            y (array): array-like, shape (n,)
+                Corresponding values where objective has been evaluated.
         """
         return
 
     @abstractmethod
     def evaluate(self, X):
+        """Evaluate the objective function for a given sample.
+
+        Args:
+            X (dict): Configuration to evaluate
+        """
         return 
 
     @abstractmethod
     def check_stop(self):
+        """Check the stop criteria.
+        """
         return
 
     def step(self):
+        """Perform one step in the optimization and update the surrogate model.
+        """
         X = self.ask()    
         func_vals = self.evaluate(X)
         self.tell(X, func_vals)
     
     def run(self):
+        """Perform a complete optimization run.
+
+        Returns:
+            list: the optimum configuration with the evaluation value and the stopping criterium.
+        """
         while not self.check_stop():
             self.step()
         return self.xopt, self.fopt, self.stop_dict
 
     @property
     def logger(self):
+        """Default logger object.
+
+        Returns:
+            logger: The class property.
+        """
         return self._logger
 
     @logger.setter
@@ -133,57 +146,34 @@ class baseBO(ABC):
         random_seed: int = None, 
         logger: str = None,
         ):
-        """The base class for Bayesian Optimization
+        """The base class for Bayesian Optimization.
 
-        Parameters
-        ----------
-        search_space : SearchSpace
-            The search space, an instance of `SearchSpace` class
-        obj_fun : Callable
-            The objective function to optimize
-        parallel_obj_fun : Callable, optional
-            The objective function that takes multiple solutions simultaneously and implement
-            the parallelization by itself, by default None
-        eq_fun : Callable, optional
-            The equality constraints, whose return value should have the same size as the 
-            number of equality constraints, by default None
-        ineq_fun : Callable, optional
-            The inequality constraints, whose return value should have the same size as the 
-            number of inequality constraints, by default None
-        model : optional
-            The surrogate mode, which will be automatically created if not passed in, by default None
-        eval_type : str, optional
-            type of arguments `obj_fun` or `parallel_obj_fun` takes: ['list', 'dict'], by default 'list'
-        DoE_size : int, optional
-            The size of inital Design of Experiment (DoE), by default None
-        n_point : int, optional
-            The number of candidate solutions proposed using infill-criteria, by default 1
-        acquisition_fun : str, optional
-            The acquisition function, by default 'EI'
-        acquisition_par : dict, optional
-            Extra parameters to the acquisition function, by default {}
-        acquisition_optimization : dict, optional
-            Additional parameters controlling the acquisition optimization, by default {}
-        ftarget : float, optional
-            The target value to hit, by default None
-        max_FEs : int, optional
-            The maximal number of evaluations, by default None
-        minimize : bool, optional
-            To minimize or maximize, by default True
-        n_job : int, optional
-            The number of allowable jobs for parallelizing the function evaluation 
-            (if `parallel_obj_fun` is not specified) and Only Effective when n_point > 1 , by default 1
-        data_file : str, optional
-            The name of the file to store extra historical information during the run,
-            by default None
-        verbose : bool, optional
-            The verbosity, by default False
-        random_seed : int, optional
-            The seed for pseudo-random number generators, by default None
-        logger : str | logging.Logger, optional
-            name of the logger file or a `logging.Logger` object, by default None, which turns
-            off the logging behaviour
-        """        
+        Args:
+            search_space (SearchSpace): The search space, an instance of `SearchSpace` class
+            obj_fun (Callable): The objective function to optimize
+            parallel_obj_fun (Callable, optional): The objective function that takes multiple solutions simultaneously and implement
+                the parallelization by itself. Defaults to None.
+            eq_fun (Callable, optional): The equality constraints, whose return value should have the same size as the 
+                number of equality constraints. Defaults to None.
+            ineq_fun (Callable, optional): The inequality constraints, whose return value should have the same size as the 
+                number of inequality constraints. Defaults to None.
+            model ([type], optional): The surrogate mode, which will be automatically created if not passed in. Defaults to None.
+            eval_type (str, optional): type of arguments `obj_fun` or `parallel_obj_fun` takes: ['list', 'dict']. Defaults to 'list'
+            DoE_size (int, optional): The size of inital Design of Experiment (DoE). Defaults to None.
+            n_point (int, optional): The number of candidate solutions proposed using infill-criteria. Defaults to 1.
+            acquisition_fun (str, optional): The acquisition function. Defaults to 'EI'.
+            acquisition_par (dict, optional): Extra parameters to the acquisition function. Defaults to {}.
+            acquisition_optimization (dict, optional): Additional parameters controlling the acquisition optimization. Defaults to {}.
+            ftarget (float, optional): The target value to hit. Defaults to None.
+            max_FEs (int, optional): The maximal number of function evaluations. Defaults to None.
+            minimize (bool, optional): To minimize (True) or maximize (False). Defaults to True.
+            n_job (int, optional): The number of allowable jobs for parallelizing the function evaluation 
+                (if `parallel_obj_fun` is not specified) and Only Effective when n_point > 1. Defaults to 1.
+            data_file (str, optional): The name of the file to store extra historical information during the run. Defaults to None.
+            verbose (bool, optional): The verbosity. Defaults to False.
+            random_seed (int, optional): The seed for pseudo-random number generators. Defaults to None.
+            logger (str, optional): name of the logger file or a `logging.Logger` object. Defaults to None.
+        """           
         self.obj_fun = obj_fun
         self.parallel_obj_fun = parallel_obj_fun
         self.h = eq_fun
@@ -410,15 +400,15 @@ class baseBO(ABC):
             )
         return self._to_pheno(X)
     
-    def tell(self, X, func_vals):
-        """Tell the BO about the function values of proposed candidate solutions
+    def tell(self, X, y):
+        """Feed an observation back to the surrogate model.
 
-        Parameters
-        ----------
-        X : List of Lists or Solution
-            The candidate solutions which are usually proposed by the `self.ask` function
-        func_vals : List/np.ndarray of reals
-            The corresponding function values
+        Args:
+            X (list): Places where the objective function has already been evaluated.
+                Each suggestion is a dictionary where each key corresponds to a
+                parameter being optimized.
+            y (array): array-like, shape (n,)
+                Corresponding values where objective has been evaluated.
         """
         X = self._to_geno(X)
 
@@ -428,12 +418,12 @@ class baseBO(ABC):
 
         _X = self._to_pheno(X)
         for i in range(len(X)):
-            X[i].fitness = func_vals[i]
+            X[i].fitness = y[i]
             X[i].n_eval += 1
             self.eval_count += 1
             self._logger.info(
                 '#{} - fitness: {}, solution: {}'.format(
-                    i + 1, func_vals[i], _X[i]
+                    i + 1, y[i], _X[i]
                 )
             )
 
@@ -463,6 +453,14 @@ class baseBO(ABC):
         self.hist_f.append(self.fopt)
 
     def create_DoE(self, n_point=None):
+        """Create a design of experiments using Latin Hypercube Sampling.
+
+        Args:
+            n_point (int, optional): Number of points to sample. Defaults to None.
+
+        Returns:
+            Solution: Solution object with the design of experiment.
+        """
         DoE = []
         while len(DoE) < n_point:
             DoE += self._search_space.sampling(n_point - len(DoE), method='LHS')
@@ -484,8 +482,14 @@ class baseBO(ABC):
         return X
         
     def evaluate(self, X):
-        """Evaluate the candidate points and update evaluation info in the dataframe
-        """
+        """Evaluate the candidate points and update evaluation info in the dataframe.
+
+        Args:
+            X (list): Samples to evaluate.
+
+        Returns:
+            list: evaluations of X.
+        """        
         # Parallelization is handled by the objective function itself
         if self.parallel_obj_fun is not None:  
             func_vals = self.parallel_obj_fun(X)
@@ -498,6 +502,11 @@ class baseBO(ABC):
         return func_vals
 
     def update_model(self):
+        """Update the surrogate model.
+
+        Returns:
+            float: The R^2 score of the model (not that this is on the training data).
+        """
         # TODO: implement a proper model selection here 
         # TODO: in case r2 is really poor, re-fit the model or log-transform `fitness`?
         data = self.data
@@ -521,15 +530,15 @@ class baseBO(ABC):
         return r2
 
     def arg_max_acquisition(self, n_point=None, return_value=False):
-        """
-        Global Optimization of the acqusition function / Infill criterion
-        Returns
-        -------
-            candidates: tuple of list,
-                candidate solution (in list)
-            values: tuple,
-                criterion value of the candidate solution
-        """
+        """Global Optimization of the acqusition function / Infill criterion
+
+        Args:
+            n_point (int, optional): Number of points to find. Defaults to None.
+            return_value (bool, optional): Return only the points or also the acquisition values. Defaults to False.
+
+        Returns:
+            list: Candidate solutions in list with optional infill criterium values.
+        """        
         self._logger.debug('acquisition optimziation...')
         t0 = time.time()
         n_point = self.n_point if n_point is None else int(n_point)
@@ -573,6 +582,11 @@ class baseBO(ABC):
         return bool(self.stop_dict)
     
     def save(self, filename):
+        """Save the optimizer and all data for a later restart.
+
+        Args:
+            filename (string): Location of the file to save.
+        """
         with open(filename, 'wb') as f:
             # NOTE: we need to dump `self.data` first. Otherwise, some 
             # attributes of it will be lost
@@ -599,6 +613,14 @@ class baseBO(ABC):
         
     @classmethod
     def load(cls, filename):
+        """Load the state from a file to restart.
+
+        Args:
+            filename (string): Path of the file.
+
+        Returns:
+            object: BO object.
+        """
         with open(filename, 'rb') as f:
             obj = dill.load(f)
             if hasattr(obj, 'data'):

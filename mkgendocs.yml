@@ -1,0 +1,19 @@
+sources_dir: docs
+templates_dir: docs/templates
+repo: https://github.com/wangronin/MIP-EGO
+version: master
+
+pages:
+  - page: "mipego/bo/base.md"
+    source: "mipego/base.py"
+    classes: 
+      - baseBO
+  - page: "mipego/bo/bayesopt.md"
+    source: "mipego/BayesOpt.py"
+    classes: 
+      - BO:
+        - pre_eval_check
+      - ParallelBO
+      - AnnealingBO
+      - SelfAdaptiveBO
+      - NoisyBO
