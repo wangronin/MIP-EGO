@@ -18,7 +18,7 @@ import itertools
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 import skfuzzy as fuzz
-from .gprhao import GaussianProcess_extra
+from .gprextra import GaussianProcess_extra
 #from .regressiontree import IncrementalRegressionTree
 
 
