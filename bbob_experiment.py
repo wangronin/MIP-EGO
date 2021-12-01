@@ -109,7 +109,7 @@ def test_BO_sklearn(dim, obj_fun, ftarget, max_FEs, lb, ub, logfile):
     """Sklearn BO"""
     space = ContinuousSpace([lb, ub]) * dim
 
-    kernel = 1.0 * Matern(length_scale=(1, 1), length_scale_bounds=(1e-10, 1e2))
+    kernel = 1.0 * Matern(length_scale=1.0, length_scale_bounds=(1e-10, 1e5))
     model = _GaussianProcessRegressor(kernel=kernel, alpha=0, n_restarts_optimizer=30, normalize_y=False)
     
     return BO(
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     fIDs = bn.nfreeIDs[6:]    # for all fcts
     instance = [1] * 10
 
-    for algorithm in tqdm([test_BO, test_BO_sklearn, test_GPytorchBO, test_AUBO]):
+    for algorithm in tqdm([test_BO_sklearn, test_GPytorchBO, test_AUBO]):
         #print("algorithm", algorithm.__doc__)
 
         opts = {

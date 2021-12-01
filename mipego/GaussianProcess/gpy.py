@@ -66,7 +66,7 @@ class ExactGPModel(gpytorch.models.ExactGP):
 
 
 class PytorchGaussianProcess:
-    def __init__(self, logger=None, likelihood=None, verbose=False, **kwargs):
+    def __init__(self, logger=None, likelihood=None, verbose=False, use_cuda=False, **kwargs):
         self.likelihood = likelihood
         if likelihood == None:
             self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
@@ -75,6 +75,7 @@ class PytorchGaussianProcess:
         self.is_fitted = False
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        self.use_cuda = use_cuda
 
     @property
     def logger(self):
@@ -117,14 +118,19 @@ class PytorchGaussianProcess:
 
     def fit(self, X, y, training_iter=50):
         "Fit the Gaussian Process model"
-        print(X)
-        print(y)
         y = torch.from_numpy(np.array(y, dtype="float64"))
         X = torch.from_numpy(np.array(X, dtype="float64"))
         self.y = y
         self.training_iter = training_iter
         self.model = ExactGPModel(X, y, self.likelihood)
         self._logger.info("Training the GPytorch exact inference model")
+
+        if (self.use_cuda):
+            X = X.cuda()
+            y = y.cuda()
+            self.model = self.model.cuda()
+            self.likelihood = self.likelihood.cuda()
+
         self.model.train()
         self.likelihood.train()
         optimizer = torch.optim.Adam(
@@ -167,14 +173,17 @@ class PytorchGaussianProcess:
             The predicted variance values.
         """
         # Get into evaluation (predictive posterior) mode
+        X = torch.from_numpy(np.array(X, dtype="float64"))
+        if (self.use_cuda):
+            X = X.cuda()
         self.model.eval()
         self.likelihood.eval()
-        X = torch.from_numpy(np.array(X, dtype="float64"))
-        f_preds = self.model(X)
-        y_preds = self.likelihood(self.model(X))
-        f_mean = f_preds.mean
-        f_var = f_preds.variance
-        self._logger.debug(f"f_mean {f_mean} - f_var {f_var}")
+        
+        with torch.no_grad(), gpytorch.settings.fast_pred_var():
+            y_preds = self.likelihood(self.model(X))
+
+        if (self.use_cuda):
+            y_preds = y_preds.cpu()
         if eval_MSE:
             return y_preds.mean.detach().numpy(), y_preds.variance.detach().numpy()
         return y_preds.mean.detach().numpy()
