@@ -1,4 +1,5 @@
 import os, sys
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import numpy as np
 from benchmark import fgeneric
 from benchmark import bbobbenchmarks as bn
@@ -12,6 +13,7 @@ from mipego.GaussianProcess import GaussianProcess
 from mipego.GaussianProcess.trend import constant_trend
 from mipego.GaussianProcess import AutoencoderGaussianProcess, PytorchGaussianProcess
 from tqdm import tqdm
+import warnings
 
 np.random.seed(42)
 
@@ -149,7 +151,7 @@ def test_GPytorchBO(dim, obj_fun, ftarget, max_FEs, lb, ub, logfile):
 def test_AUBO(dim, obj_fun, ftarget, max_FEs, lb, ub, logfile):
     """Autoencoder BO"""
     space = ContinuousSpace([lb, ub]) * dim
-    model = AutoencoderGaussianProcess(verbose=True, gpu="13", encoding_dim=5)
+    model = AutoencoderGaussianProcess(verbose=False, gpu="13", encoding_dim=5)
     model.train_encoder(space, sample_size=dim*100)
     return BO(
         search_space=space, 
@@ -166,11 +168,11 @@ def test_AUBO(dim, obj_fun, ftarget, max_FEs, lb, ub, logfile):
     )
 
 if __name__ == '__main__': 
-    dims = [5,10,20,40] #
+    dims = [5] #,10,20,40
     fIDs = bn.nfreeIDs[6:]    # for all fcts
-    instance = [1] * 10
-
-    for algorithm in tqdm([test_BO_sklearn, test_GPytorchBO, test_AUBO]):
+    instance = [1] * 1
+    warnings.filterwarnings("ignore")
+    for algorithm in tqdm([ test_AUBO]): #test_BO, test_BO_sklearn, test_GPytorchBO,
         #print("algorithm", algorithm.__doc__)
 
         opts = {
@@ -185,7 +187,8 @@ if __name__ == '__main__':
         }
         
         for dim in tqdm(dims, leave=False):
-            opts['max_FEs'] = str(10*dim+50)
+            opts['max_FEs'] = str(1*dim+10)
+            opts['bbob_opt']['comments'] = 'max_FEs={0}'.format(opts['max_FEs'])
             for fID in tqdm(fIDs, leave=False):
                 for i in tqdm(instance, leave=False):
                     run_optimizer(

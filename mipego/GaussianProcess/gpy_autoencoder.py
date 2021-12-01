@@ -60,7 +60,7 @@ class AutoencoderGaussianProcess(PytorchGaussianProcess):
         self.encoder = keras.Model(input_layer, encoded)
         # we do not care about the decoder part
         self.autoencoder.compile(optimizer="adam", loss="mse")
-        self._logger.info(self.autoencoder.summary())
+        #self._logger.info(self.autoencoder.summary())
 
     def scale_data(self, data):
         """
@@ -95,13 +95,14 @@ class AutoencoderGaussianProcess(PytorchGaussianProcess):
             batch_size=256,
             shuffle=True,
             validation_split=0.1,
+            verbose=0
         )
 
     def fit(self, X, y, training_iter=50):
         "Fit the Gaussian Process model"
         assert self.encoder is not None
         X = self.scale_data(X)
-        X = self.encoder.predict(X)
+        X = self.encoder.predict(X.astype('float32'))
         y = y.ravel()
         self.y = y
         return super(AutoencoderGaussianProcess, self).fit(X, y, training_iter)
@@ -118,5 +119,5 @@ class AutoencoderGaussianProcess(PytorchGaussianProcess):
         """
         # Check data
         X = self.scale_data(X)
-        X = self.encoder.predict(X)
+        X = self.encoder.predict(X.astype('float32'))
         return super(AutoencoderGaussianProcess, self).predict(X, **kwargs)

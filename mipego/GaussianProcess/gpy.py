@@ -114,12 +114,14 @@ class PytorchGaussianProcess:
             except:
                 X_cat = self._enc.fit_transform(X_cat)
             X = np.c_[np.delete(X_, self._cat_idx, 1).astype(float), X_cat]
+        else:
+            X = np.array(X)
         return X
 
     def fit(self, X, y, training_iter=50):
         "Fit the Gaussian Process model"
-        y = torch.from_numpy(np.array(y, dtype="float64"))
-        X = torch.from_numpy(np.array(X, dtype="float64"))
+        y = torch.from_numpy(np.asarray(y).astype(np.float32))
+        X = torch.from_numpy(np.asarray(X).astype(np.float32))
         self.y = y
         self.training_iter = training_iter
         self.model = ExactGPModel(X, y, self.likelihood)
@@ -173,7 +175,7 @@ class PytorchGaussianProcess:
             The predicted variance values.
         """
         # Get into evaluation (predictive posterior) mode
-        X = torch.from_numpy(np.array(X, dtype="float64"))
+        X = torch.from_numpy(np.asarray(X).astype(np.float32))
         if (self.use_cuda):
             X = X.cuda()
         self.model.eval()
