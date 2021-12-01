@@ -168,11 +168,11 @@ def test_AUBO(dim, obj_fun, ftarget, max_FEs, lb, ub, logfile):
     )
 
 if __name__ == '__main__': 
-    dims = [5] #,10,20,40
+    dims = [5,10,20,40] #
     fIDs = bn.nfreeIDs[6:]    # for all fcts
-    instance = [1] * 1
+    instance = [1] * 10
     warnings.filterwarnings("ignore")
-    for algorithm in tqdm([ test_AUBO]): #test_BO, test_BO_sklearn, test_GPytorchBO,
+    for algorithm in tqdm([ test_BO, test_BO_sklearn, test_GPytorchBO, test_AUBO]): #
         #print("algorithm", algorithm.__doc__)
 
         opts = {
@@ -187,7 +187,7 @@ if __name__ == '__main__':
         }
         
         for dim in tqdm(dims, leave=False):
-            opts['max_FEs'] = str(1*dim+10)
+            opts['max_FEs'] = str(10*dim+50)
             opts['bbob_opt']['comments'] = 'max_FEs={0}'.format(opts['max_FEs'])
             for fID in tqdm(fIDs, leave=False):
                 for i in tqdm(instance, leave=False):
