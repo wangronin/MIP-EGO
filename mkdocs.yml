@@ -18,8 +18,8 @@ theme:
     palette:
         # scheme: preference uses dark or light mode based on user (OS) preference
         scheme: preference
-        primary: deep-orange
-        accent: deep-purple
+        primary: dark-blue
+        accent: cyan
     icon:
         logo: fontawesome/solid/code
     favicon: '/docs_assets/images/favicon.ico'

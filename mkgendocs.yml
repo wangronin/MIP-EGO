@@ -4,16 +4,45 @@ repo: https://github.com/wangronin/MIP-EGO
 version: master
 
 pages:
-  - page: "mipego/bo/base.md"
-    source: "mipego/base.py"
-    classes: 
-      - baseBO
-  - page: "mipego/bo/bayesopt.md"
+  - page: "API/Bayesian Optimizers.md"
     source: "mipego/BayesOpt.py"
     classes: 
-      - BO:
-        - pre_eval_check
+      - BO
       - ParallelBO
       - AnnealingBO
       - SelfAdaptiveBO
       - NoisyBO
+  - page: "API/Extended BO.md"
+    source: "mipego/Extension.py"
+    classes: 
+      - OptimizerPipeline
+      - MultiAcquisitionBO
+  - page: "API/Infill Criteria.md"
+    source: "mipego/InfillCriteria.py"
+    classes: 
+      - ImprovementBased
+      - UCB
+      - EI
+      - EpsilonPI
+      - PI
+      - MGFI
+      - GEI
+  - page: "API/Search Space.md"
+    source: "mipego/SearchSpace.py"
+    classes: 
+      - SearchSpace
+      - ContinuousSpace
+      - NominalSpace
+      - OrdinalSpace
+      - ProductSpace
+  - page: "API/surrogates/Random Forest.md"
+    source: "mipego/Surrogate.py"
+    classes: 
+      - RandomForest
+  - page: "API/Surrogates/Gaussian Process Regression.md"
+    source: "mipego/Surrogate.py"
+    classes: 
+      - RandomForest  - page: "API/surrogates/GaussianProcessRegression.md"
+    source: "mipego/GaussianProcess/gpr.py"
+    classes: 
+      - GaussianProcess
